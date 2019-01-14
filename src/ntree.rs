@@ -60,12 +60,12 @@ impl<'a> BreadthIter<'a> {
 }
 
 impl<'a> Iterator for BreadthIter<'a> {
-    type Item = String;
+    type Item = &'a NTree;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(front) = self.queue.pop_front() {
             self.queue.extend(front.children.iter().by_ref());
-            return Some(front.val.clone())
+            return Some(front)
         }
         None
     }
@@ -164,7 +164,7 @@ mod tests {
         let child1 = tree.child_mut(0);
         child1.add_child("child4");
 
-        let values:  Vec<String> = tree.bf_iter().collect();
+        let values:  Vec<String> = tree.bf_iter().map(|nt| nt.val.clone()).collect();
 
         assert_eq!(vec!["root", "child1", "child2", "child3", "child4"], values);
     }
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn test_breadth_first() {
         let tree = make_a_big_tree();
-        let values: Vec<String> = tree.bf_iter().collect();
+        let values: Vec<String> = tree.bf_iter().map(|nt| nt.val.clone()).collect();
 
         assert_eq!(vec![
             "theroot",
