@@ -2,6 +2,8 @@
 // For now, we will not have a parent ptr, since we may not need it.
 // But each node may have N-children
 
+use std::collections::VecDeque;
+
 struct NTree {
     val: String,
     children: Vec<NTree>,
@@ -37,20 +39,35 @@ impl NTree {
             self.val.as_str()
     }
 
-    fn depth_iter(&self) -> DepthIter {
-        DepthIter::default()
+    fn bf_iter(&self) -> BreadthIter {
+        BreadthIter::new_at(self)
     }
 }
 
 #[derive(Default)]
-struct DepthIter<'a> {
-    nodes: Vec<(&'a NTree, usize)>,
+struct BreadthIter<'a> {
+    queue: VecDeque<&'a NTree>
 }
 
-impl<'a> Iterator for DepthIter<'a> {
+impl<'a> BreadthIter<'a> {
+    fn new_at(node: &'a NTree) -> BreadthIter<'a> {
+        let mut queue = VecDeque::new();
+        queue.push_back(node);
+        BreadthIter {
+            queue
+        }
+    }
+}
+
+impl<'a> Iterator for BreadthIter<'a> {
     type Item = String;
+
     fn next(&mut self) -> Option<Self::Item> {
-        Some("Foobar".to_string())
+        if let Some(front) = self.queue.pop_front() {
+            self.queue.extend(front.children.iter().by_ref());
+            return Some(front.val.clone())
+        }
+        None
     }
 }
 
@@ -138,24 +155,38 @@ mod tests {
     }
 
     #[test]
-    fn test_depth_first() {
+    fn test_simple_bf() {
+        let mut tree = NTree::new("root");
+        tree.add_child("child1");
+        tree.add_child("child2");
+        tree.add_child("child3");
+
+        let child1 = tree.child_mut(0);
+        child1.add_child("child4");
+
+        let values:  Vec<String> = tree.bf_iter().collect();
+
+        assert_eq!(vec!["root", "child1", "child2", "child3", "child4"], values);
+    }
+
+    #[test]
+    fn test_breadth_first() {
         let tree = make_a_big_tree();
-        let values: Vec<String> = tree.depth_iter().collect();
+        let values: Vec<String> = tree.bf_iter().collect();
 
         assert_eq!(vec![
             "theroot",
             "child0",
+            "child1",
+            "child2",
             "child00",
-            "child01",
-            "child010",
-            "child011",
             "child01",
             "child02",
             "child03",
-            "child1",
-            "child2",
             "child20",
             "child21",
+            "child010",
+            "child011",
         ], values);
 
     }
