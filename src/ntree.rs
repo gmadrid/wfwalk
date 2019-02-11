@@ -4,30 +4,30 @@
 
 use std::collections::VecDeque;
 
-struct NTree {
-    val: String,
-    children: Vec<NTree>,
+struct NTree<T> {
+    val: T,
+    children: Vec<NTree<T>>,
 }
 
-impl NTree {
-    fn new<T: AsRef<str>>(value: T) -> NTree {
+impl<T> NTree<T> {
+    fn new(value: T) -> NTree<T> {
         NTree {
-            val: value.as_ref().to_owned(),
+            val: value,
             children: vec![],
         }
     }
 
-    fn add_child<T: AsRef<str>>(&mut self, value: T) -> usize {
+    fn add_child(&mut self, value: T) -> usize {
         let node = NTree::new(value);
         self.children.push(node);
         self.children.len() - 1
     }
 
-    fn child(&self, i: usize) -> &NTree {
+    fn child(&self, i: usize) -> &NTree<T> {
         &self.children[i]
     }
 
-    fn child_mut(&mut self, i: usize) -> &mut NTree {
+    fn child_mut(&mut self, i: usize) -> &mut NTree<T> {
         &mut self.children[i]
     }
 
@@ -35,22 +35,22 @@ impl NTree {
         self.children.len()
     }
 
-    fn value(&self) -> &str {
-            self.val.as_str()
+    fn value(&self) -> &T {
+        &self.val
     }
 
-    fn bf_iter(&self) -> BreadthIter {
+    fn bf_iter(&self) -> BreadthIter<T> {
         BreadthIter::new_at(self)
     }
 }
 
 #[derive(Default)]
-struct BreadthIter<'a> {
-    queue: VecDeque<&'a NTree>
+struct BreadthIter<'a, T> {
+    queue: VecDeque<&'a NTree<T>>
 }
 
-impl<'a> BreadthIter<'a> {
-    fn new_at(node: &'a NTree) -> BreadthIter<'a> {
+impl<'a, T> BreadthIter<'a, T> {
+    fn new_at(node: &'a NTree<T>) -> BreadthIter<'a, T> {
         let mut queue = VecDeque::new();
         queue.push_back(node);
         BreadthIter {
@@ -59,8 +59,8 @@ impl<'a> BreadthIter<'a> {
     }
 }
 
-impl<'a> Iterator for BreadthIter<'a> {
-    type Item = &'a NTree;
+impl<'a, T> Iterator for BreadthIter<'a, T> {
+    type Item = &'a NTree<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(front) = self.queue.pop_front() {
@@ -77,35 +77,35 @@ mod tests {
 
     #[test]
     fn test_new_tree() {
-        let tree = NTree::new(&"root");
-        assert_eq!("root", tree.value());
+        let tree = NTree::new("root");
+        assert_eq!("root", *tree.value());
         assert_eq!(0, tree.num_children());
     }
 
     #[test]
     fn test_one_child() {
-        let mut tree = NTree::new( &"root");
+        let mut tree = NTree::new("root");
         tree.add_child("child0");
         assert_eq!(1, tree.num_children());
 
-        let child0 = tree.child(0);
-        assert_eq!("child0", child0.value());
+        let child0 = tree.child(0); 
+       assert_eq!("child0", *child0.value());
         assert_eq!(0, child0.num_children());
     }
 
     #[test]
     fn test_n_children() {
-        let mut tree = NTree::new(&"foobar");
+        let mut tree = NTree::new("foobar");
         tree.add_child("child0");
         tree.add_child("child1");
         tree.add_child("child2");
         tree.add_child("child3");
 
         assert_eq!(4, tree.num_children());
-        assert_eq!("child0", tree.child(0).value());
-        assert_eq!("child1", tree.child(1).value());
-        assert_eq!("child2", tree.child(2).value());
-        assert_eq!("child3", tree.child(3).value());
+        assert_eq!("child0", *tree.child(0).value());
+        assert_eq!("child1", *tree.child(1).value());
+        assert_eq!("child2", *tree.child(2).value());
+        assert_eq!("child3", *tree.child(3).value());
     }
 
     #[test]
@@ -131,7 +131,7 @@ mod tests {
         assert_eq!(2, tree.child(2).num_children());
     }
 
-    fn make_a_big_tree() -> NTree {
+    fn make_a_big_tree() -> NTree<&'static str> {
         let mut tree = NTree::new("theroot");
         tree.add_child("child0");
         tree.add_child("child1");
@@ -164,7 +164,7 @@ mod tests {
         let child1 = tree.child_mut(0);
         child1.add_child("child4");
 
-        let values:  Vec<String> = tree.bf_iter().map(|nt| nt.val.clone()).collect();
+        let values:  Vec<&str> = tree.bf_iter().map(|nt| nt.val).collect();
 
         assert_eq!(vec!["root", "child1", "child2", "child3", "child4"], values);
     }
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn test_breadth_first() {
         let tree = make_a_big_tree();
-        let values: Vec<String> = tree.bf_iter().map(|nt| nt.val.clone()).collect();
+        let values: Vec<&str> = tree.bf_iter().map(|nt| nt.val).collect();
 
         assert_eq!(vec![
             "theroot",
@@ -188,6 +188,5 @@ mod tests {
             "child010",
             "child011",
         ], values);
-
     }
 }
