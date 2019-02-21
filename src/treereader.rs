@@ -29,20 +29,19 @@ impl<'a> BuildData<'a> {
                 } else {
                     None
                 }
-            });
-
-        // If not, see if it's a new level or an error.
-        if matched_level.is_none() {
-            if self.stack.len() > 0 {
-                let deepest_indent = self.stack[self.stack.len() - 1].0;
-                if line_indent < deepest_indent {
-                    bail!("Line with indent, {}, has no sibling:\n{}", line_indent, s);
+            })
+            .or_else(|| {
+                if self.stack.len() > 0 {
+                    let deepest_indent = self.stack[self.stack.len() - 1].0;
+                    if line_indent < deepest_indent {
+                        // In this case, the new indent is smaller than the current indent, but
+                        // it doesn't match up with any higher level.
+                        return None;
+                    }
                 }
-            }
-            matched_level = Some(self.stack.len());
-        }
-
-        let matched_level = matched_level.unwrap();
+                Some(self.stack.len())
+            })
+            .ok_or(format!("Line with indent, {}, has no sibling:\n{}", line_indent, s))?;
 
         let parent_index = if matched_level == 0 {
             self.tree.root_index()
