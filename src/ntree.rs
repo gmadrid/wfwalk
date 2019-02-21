@@ -1,155 +1,200 @@
-// Tree has a root node.
-// For now, we will not have a parent ptr, since we may not need it.
-// But each node may have N-children
-
 use std::collections::VecDeque;
+use std::ops::Index;
+
+use super::arena::{Arena, ArenaIndex};
+use crate::errors::*;
 
 struct NTree<T> {
-    val: T,
-    children: Vec<NTree<T>>,
+    arena: Arena<NTreeNode<T>>,
+    root_index: ArenaIndex,
+}
+
+struct NTreeNode<T> {
+    value: T,
+    parent: Option<ArenaIndex>,
+    children: Vec<ArenaIndex>,
 }
 
 impl<T> NTree<T> {
-    fn new(value: T) -> NTree<T> {
-        NTree {
-            val: value,
+    fn new(root_value: T) -> NTree<T> {
+        let mut arena: Arena<NTreeNode<T>> = Arena::new();
+        let root = NTreeNode {
+            value: root_value,
+            parent: None,
             children: vec![],
-        }
+        };
+        let root_index = arena.alloc(root);
+        NTree { arena, root_index }
     }
 
-    fn add_child(&mut self, value: T) -> usize {
-        let node = NTree::new(value);
-        self.children.push(node);
-        self.children.len() - 1
+    fn root_index(&self) -> ArenaIndex {
+        self.root_index
     }
 
-    fn child(&self, i: usize) -> &NTree<T> {
-        &self.children[i]
+    fn len(&self) -> usize {
+        self.arena.live_count()
     }
 
-    fn child_mut(&mut self, i: usize) -> &mut NTree<T> {
-        &mut self.children[i]
+    fn value(&self, index: ArenaIndex) -> Result<&T> {
+        Ok(&self.arena.value(index)?.value)
     }
 
-    fn num_children(&self) -> usize {
-        self.children.len()
+    fn add_child(&mut self, index: ArenaIndex, value: T) -> Result<ArenaIndex> {
+        let new_node = NTreeNode {
+            value,
+            parent: Some(index),
+            children: vec![],
+        };
+        let new_node_index = self.arena.alloc(new_node);
+        self.arena.value_mut(index)?.children.push(new_node_index);
+        Ok(new_node_index)
     }
 
-    fn value(&self) -> &T {
-        &self.val
+    fn children(&self, index: ArenaIndex) -> Result<&Vec<ArenaIndex>> {
+        Ok(&self.arena.value(index)?.children)
     }
 
-    fn bf_iter(&self) -> BreadthIter<T> {
-        BreadthIter::new_at(self)
-    }
-}
-
-#[derive(Default)]
-struct BreadthIter<'a, T> {
-    queue: VecDeque<&'a NTree<T>>
-}
-
-impl<'a, T> BreadthIter<'a, T> {
-    fn new_at(node: &'a NTree<T>) -> BreadthIter<'a, T> {
+    fn bf_indices(&self) -> BreadthIter<T> {
         let mut queue = VecDeque::new();
-        queue.push_back(node);
+        queue.push_back(self.root_index());
         BreadthIter {
+            tree: &self,
             queue
         }
     }
+
+    fn bf_values(&self) -> BreadthValuesIter<T> {
+        let mut queue = VecDeque::new();
+        queue.push_back(self.root_index);
+        BreadthValuesIter {
+            tree: &self,
+            queue,
+        }
+    }
+}
+
+impl<T> Index<ArenaIndex> for NTree<T> {
+    type Output = NTreeNode<T>;
+
+    fn index(&self, index: ArenaIndex) -> &NTreeNode<T> {
+        &self.arena[index]
+    }
+}
+
+struct BreadthIter<'a, T> {
+    tree: &'a NTree<T>,
+    queue: VecDeque<ArenaIndex>,
 }
 
 impl<'a, T> Iterator for BreadthIter<'a, T> {
-    type Item = &'a NTree<T>;
+    type Item = ArenaIndex;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(front) = self.queue.pop_front() {
-            self.queue.extend(front.children.iter().by_ref());
-            return Some(front)
-        }
-        None
+    fn next(&mut self) -> Option<ArenaIndex> {
+        self.queue.pop_front().map(|front| {
+            self.queue.extend(self.tree.children(front).unwrap());
+            front
+        })
+    }
+}
+
+struct BreadthValuesIter<'a, T> {
+    tree: &'a NTree<T>,
+    queue: VecDeque<ArenaIndex>,
+}
+
+impl<'a, T> Iterator for BreadthValuesIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        self.queue.pop_front().map(|front| {
+            self.queue.extend(self.tree.children(front).unwrap());
+            self.tree.value(front).unwrap()
+        })
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     #[test]
     fn test_new_tree() {
         let tree = NTree::new("root");
-        assert_eq!("root", *tree.value());
-        assert_eq!(0, tree.num_children());
+        assert_eq!("root", *tree.value(tree.root_index()).unwrap());
+        assert_eq!(1, tree.len());
     }
 
     #[test]
     fn test_one_child() {
         let mut tree = NTree::new("root");
-        tree.add_child("child0");
-        assert_eq!(1, tree.num_children());
+        let child1 = tree.add_child(tree.root_index(), "child").unwrap();
 
-        let child0 = tree.child(0); 
-       assert_eq!("child0", *child0.value());
-        assert_eq!(0, child0.num_children());
+        assert_eq!("child", *tree.value(child1).unwrap());
+        assert_eq!(2, tree.len());
     }
 
     #[test]
-    fn test_n_children() {
-        let mut tree = NTree::new("foobar");
-        tree.add_child("child0");
-        tree.add_child("child1");
-        tree.add_child("child2");
-        tree.add_child("child3");
+    fn test_many_children() {
+        let mut tree = NTree::new("root");
+        let child1 = tree.add_child(tree.root_index(), "child1").unwrap();
+        let child2 = tree.add_child(tree.root_index(), "child2").unwrap();
+        let child3 = tree.add_child(tree.root_index(), "child3").unwrap();
 
-        assert_eq!(4, tree.num_children());
-        assert_eq!("child0", *tree.child(0).value());
-        assert_eq!("child1", *tree.child(1).value());
-        assert_eq!("child2", *tree.child(2).value());
-        assert_eq!("child3", *tree.child(3).value());
+        assert_eq!("child1", *tree.value(child1).unwrap());
+        assert_eq!("child2", *tree.value(child2).unwrap());
+        assert_eq!("child3", *tree.value(child3).unwrap());
+        assert_eq!(4, tree.len());
+
+        let children = tree.children(tree.root_index()).unwrap();
+        assert_eq!(vec![child1, child2, child3], *children);
     }
 
     #[test]
     fn test_deep_children() {
-        let mut tree = NTree::new("foobar");
-        tree.add_child("child0");
-        tree.add_child("child1");
-        tree.add_child("child2");
+        let mut tree = NTree::new("root");
+        let child0 = tree.add_child(tree.root_index(), "child0").unwrap();
+        let child1 = tree.add_child(tree.root_index(), "child1").unwrap();
+        let child2 = tree.add_child(tree.root_index(), "child2").unwrap();
 
-        let child = tree.child_mut(0);
-        child.add_child("child00");
-        child.add_child("child01");
-        child.add_child("child02");
-        child.add_child("child03");
+        let child00 = tree.add_child(child0, "child00").unwrap();
+        let child01 = tree.add_child(child0, "child01").unwrap();
+        let child02 = tree.add_child(child0, "child02").unwrap();
+        let child03 = tree.add_child(child0, "child03").unwrap();
 
-        let child = tree.child_mut(2);
-        child.add_child("child20");
-        child.add_child("child21");
+        let child20 = tree.add_child(child2, "child20").unwrap();
+        let child21 = tree.add_child(child2, "child21").unwrap();
 
-        assert_eq!(3, tree.num_children());
-        assert_eq!(4, tree.child(0).num_children());
-        assert_eq!(0, tree.child(1).num_children());
-        assert_eq!(2, tree.child(2).num_children());
+        assert_eq!(
+            vec![child0, child1, child2],
+            *tree.children(tree.root_index()).unwrap()
+        );
+        assert_eq!(
+            vec![child00, child01, child02, child03],
+            *tree.children(child0).unwrap()
+        );
+        assert_eq!(Vec::<ArenaIndex>::new(), *tree.children(child1).unwrap());
+        assert_eq!(vec![child20, child21], *tree.children(child2).unwrap());
     }
 
     fn make_a_big_tree() -> NTree<&'static str> {
-        let mut tree = NTree::new("theroot");
-        tree.add_child("child0");
-        tree.add_child("child1");
-        tree.add_child("child2");
+        let mut tree = NTree::new("root");
+        let child0 = tree.add_child(tree.root_index(), "child0").unwrap();
+        let child1 = tree.add_child(tree.root_index(), "child1").unwrap();
+        let child2 = tree.add_child(tree.root_index(), "child2").unwrap();
 
-        let child0 = tree.child_mut(0);
-        child0.add_child("child00");
-        child0.add_child("child01");
-        child0.add_child("child02");
-        child0.add_child("child03");
+        let _child00 = tree.add_child(child0, "child00").unwrap();
+        let child01 = tree.add_child(child0, "child01").unwrap();
+        let _child02 = tree.add_child(child0, "child02").unwrap();
+        let _child03 = tree.add_child(child0, "child03").unwrap();
 
-        let child01 = child0.child_mut(1);
-        child01.add_child("child010");
-        child01.add_child("child011");
+        tree.add_child(child01, "child010");
+        tree.add_child(child01, "child011");
 
-        let child2 = tree.child_mut(2);
-        child2.add_child("child20");
-        child2.add_child("child21");
+        let _child10 = tree.add_child(child1, "child10").unwrap();
+        let _child11 = tree.add_child(child1, "child11").unwrap();
+
+        let _child20 = tree.add_child(child2, "child20").unwrap();
+        let _child21 = tree.add_child(child2, "child21").unwrap();
 
         tree
     }
@@ -157,25 +202,27 @@ mod tests {
     #[test]
     fn test_simple_bf() {
         let mut tree = NTree::new("root");
-        tree.add_child("child1");
-        tree.add_child("child2");
-        tree.add_child("child3");
+        let child0 = tree.add_child(tree.root_index(), "child0").unwrap();
+        let child1 = tree.add_child(tree.root_index(), "child1").unwrap();
+        let child2 = tree.add_child(tree.root_index(), "child2").unwrap();
 
-        let child1 = tree.child_mut(0);
-        child1.add_child("child4");
+        let child3 = tree.add_child(child0, "child3").unwrap();
 
-        let values:  Vec<&str> = tree.bf_iter().map(|nt| nt.val).collect();
+        let indices: Vec<ArenaIndex> = tree.bf_indices().collect();
 
-        assert_eq!(vec!["root", "child1", "child2", "child3", "child4"], values);
+        assert_eq!(
+            vec![tree.root_index(), child0, child1, child2, child3],
+            indices
+        );
     }
 
     #[test]
-    fn test_breadth_first() {
+    fn test_deep_iter_with_values() {
         let tree = make_a_big_tree();
-        let values: Vec<&str> = tree.bf_iter().map(|nt| nt.val).collect();
 
+        let values: Vec<&str> = tree.bf_values().map(|s| *s).collect();
         assert_eq!(vec![
-            "theroot",
+            "root",
             "child0",
             "child1",
             "child2",
@@ -183,10 +230,13 @@ mod tests {
             "child01",
             "child02",
             "child03",
+            "child10",
+            "child11",
             "child20",
             "child21",
             "child010",
             "child011",
         ], values);
+
     }
 }
