@@ -12,7 +12,6 @@ fn trim_with_length(s: &str) -> (&str, usize) {
 struct BuildData<'a> {
     tree: &'a mut NTree<String>,
     stack: Vec<(usize, ArenaIndex)>,
-    current_level: usize,
 }
 
 impl<'a> BuildData<'a> {
@@ -73,7 +72,6 @@ fn read_tree<R: BufRead>(reader: R) -> Result<NTree<String>> {
     let mut data = BuildData {
         tree: &mut tree,
         stack: Vec::default(),
-        current_level: 0,
     };
 
     for line in reader.lines() {
