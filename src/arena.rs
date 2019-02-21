@@ -54,7 +54,6 @@ impl<T> Index<ArenaIndex> for Arena<T> {
     fn index(&self, index: ArenaIndex) -> &T {
         match &self.cells[index.0] {
             ArenaCell::Live(value) => &value,
-            _ => panic!("No value for index: {}", index.0),
         }
     }
 }

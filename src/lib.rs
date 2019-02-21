@@ -8,5 +8,5 @@ mod ntree;
 mod treereader;
 
 mod errors {
-    error_chain!{}
+    error_chain! {}
 }
