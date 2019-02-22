@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::arena::{Arena, ArenaIndex};
+use super::arena::{Arena, ArenaIndex};
 use crate::errors::*;
 
 pub struct NTree<T> {

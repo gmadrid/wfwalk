@@ -1,6 +1,6 @@
 use std::io::BufRead;
 
-use crate::arena::ArenaIndex;
+use super::arena::ArenaIndex;
 use crate::errors::*;
 use super::ntree::NTree;
 
