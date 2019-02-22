@@ -1,8 +1,8 @@
 use std::io::BufRead;
 
 use super::arena::ArenaIndex;
-use crate::errors::*;
 use super::ntree::NTree;
+use crate::errors::*;
 
 fn trim_with_length(s: &str) -> (&str, usize) {
     let trimmed = s.trim_start();
@@ -41,7 +41,10 @@ impl<'a> BuildData<'a> {
                 }
                 Some(self.stack.len())
             })
-            .ok_or(format!("Line with indent, {}, has no sibling:\n    {}", line_indent, s))?;
+            .ok_or(format!(
+                "Line with indent, {}, has no sibling:\n    {}",
+                line_indent, s
+            ))?;
 
         let parent_index = if matched_level == 0 {
             self.tree.root_index()

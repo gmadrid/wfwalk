@@ -2,6 +2,8 @@ use std::collections::VecDeque;
 
 use super::arena::{Arena, ArenaIndex};
 use crate::errors::*;
+use std::fmt::Display;
+use std::fmt::Formatter;
 
 pub struct NTree<T> {
     arena: Arena<NTreeNode<T>>,
@@ -76,9 +78,33 @@ impl<'a, T> Iterator for BreadthNewIter<'a, T> {
     }
 }
 
+impl<T> Display for NTree<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.format_helper(f, self.root_index(), 0);
+        Ok(())
+    }
+}
+
+impl<T> NTree<T>
+where
+    T: Display,
+{
+    fn format_helper(&self, f: &mut Formatter, index: ArenaIndex, indent: usize) {
+        write!(f, "{2:1$}{0}\n", self.value(index).unwrap(), indent, "");
+        for child_index in self.children(index).unwrap() {
+            self.format_helper(f, *child_index, indent + 3);
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use std::fmt::Write;
 
     #[test]
     fn test_new_tree() {
@@ -171,7 +197,7 @@ mod test {
 
         let child3 = tree.add_child(child0, "child3").unwrap();
 
-        let indices: Vec<ArenaIndex> = tree.bf_iter().map(|(i,v)| i).collect();
+        let indices: Vec<ArenaIndex> = tree.bf_iter().map(|(i, v)| i).collect();
 
         assert_eq!(
             vec![tree.root_index(), child0, child1, child2, child3],
@@ -195,21 +221,24 @@ mod test {
         let child21 = tree.add_child(child2, "child21").unwrap();
         let child210 = tree.add_child(child21, "child210").unwrap();
 
-        let values: Vec<(ArenaIndex, &str)> = tree.bf_iter().map(|(i,v)| (i, *v)).collect();
-        assert_eq!(vec![
-            (tree.root_index(), "root"),
-            (child0, "child0"),
-            (child1, "child1"),
-            (child2, "child2"),
-            (child10, "child10"),
-            (child11, "child11"),
-            (child20, "child20"),
-            (child21, "child21"),
-            (child110, "child110"),
-            (child200, "child200"),
-            (child201, "child201"),
-            (child210, "child210"),
-        ], values);
+        let values: Vec<(ArenaIndex, &str)> = tree.bf_iter().map(|(i, v)| (i, *v)).collect();
+        assert_eq!(
+            vec![
+                (tree.root_index(), "root"),
+                (child0, "child0"),
+                (child1, "child1"),
+                (child2, "child2"),
+                (child10, "child10"),
+                (child11, "child11"),
+                (child20, "child20"),
+                (child21, "child21"),
+                (child110, "child110"),
+                (child200, "child200"),
+                (child201, "child201"),
+                (child210, "child210"),
+            ],
+            values
+        );
     }
 
     #[test]
@@ -224,5 +253,43 @@ mod test {
             ],
             values
         );
+    }
+
+    static DISPLAY_TEST_OUTPUT: &str = r#"root
+   child0
+   child1
+      child10
+      child11
+         child110
+   child2
+      child20
+         child200
+         child201
+      child21
+         child210
+"#;
+
+    #[test]
+    fn test_display() {
+        let mut tree = NTree::new("root");
+        let child0 = tree.add_child(tree.root_index(), "child0").unwrap();
+        let child1 = tree.add_child(tree.root_index(), "child1").unwrap();
+        let child2 = tree.add_child(tree.root_index(), "child2").unwrap();
+
+        let child10 = tree.add_child(child1, "child10").unwrap();
+        let child11 = tree.add_child(child1, "child11").unwrap();
+        let child110 = tree.add_child(child11, "child110").unwrap();
+        let child20 = tree.add_child(child2, "child20").unwrap();
+        let child200 = tree.add_child(child20, "child200").unwrap();
+        let child201 = tree.add_child(child20, "child201").unwrap();
+        let child21 = tree.add_child(child2, "child21").unwrap();
+        let child210 = tree.add_child(child21, "child210").unwrap();
+
+        println!("{}", tree);
+
+        let mut str = String::new();
+        write!(str, "{}", tree);
+
+        assert_eq!(DISPLAY_TEST_OUTPUT, str);
     }
 }
