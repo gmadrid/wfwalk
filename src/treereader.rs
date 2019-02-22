@@ -210,4 +210,15 @@ THREE
             bf_values_from_string(SKIP_LEVELS)
         );
     }
+
+    static BAD_INDENT: &str = r#"ONE
+TWO
+   TWO-ONE
+  BAD-INDENT"#;
+
+    #[test]
+    fn test_bad_indent() {
+        let bad = read_tree(BufReader::new(BAD_INDENT.as_bytes()));
+        assert!(bad.is_err());
+    }
 }
