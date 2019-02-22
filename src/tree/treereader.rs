@@ -2,7 +2,7 @@ use std::io::BufRead;
 
 use crate::arena::ArenaIndex;
 use crate::errors::*;
-use crate::ntree::NTree;
+use super::ntree::NTree;
 
 fn trim_with_length(s: &str) -> (&str, usize) {
     let trimmed = s.trim_start();
@@ -41,7 +41,7 @@ impl<'a> BuildData<'a> {
                 }
                 Some(self.stack.len())
             })
-            .ok_or(format!("Line with indent, {}, has no sibling:\n{}", line_indent, s))?;
+            .ok_or(format!("Line with indent, {}, has no sibling:\n    {}", line_indent, s))?;
 
         let parent_index = if matched_level == 0 {
             self.tree.root_index()
@@ -91,7 +91,7 @@ mod tests {
     fn bf_values_from_string(s: &'static str) -> Vec<String> {
         //read_tree(BufReader::new(s.as_bytes())).unwrap().bf_values().map(|v| *v.clone()).collect()
         let tree = read_tree(BufReader::new(s.as_bytes())).unwrap();
-        tree.bf_values().map(|v| v.clone()).collect()
+        tree.bf_iter().map(|(i, s)| s.clone()).collect()
     }
 
     #[test]

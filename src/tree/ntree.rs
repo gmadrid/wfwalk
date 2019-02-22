@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use super::arena::{Arena, ArenaIndex};
+use crate::arena::{Arena, ArenaIndex};
 use crate::errors::*;
 
 pub struct NTree<T> {
@@ -53,47 +53,25 @@ impl<T> NTree<T> {
         Ok(&self.arena.value(index)?.children)
     }
 
-    fn bf_indices(&self) -> BreadthIter<T> {
+    pub fn bf_iter(&self) -> BreadthNewIter<T> {
         let mut queue = VecDeque::new();
         queue.push_back(self.root_index());
-        BreadthIter { tree: &self, queue }
-    }
-
-    pub fn bf_values(&self) -> BreadthValuesIter<T> {
-        let mut queue = VecDeque::new();
-        queue.push_back(self.root_index);
-        BreadthValuesIter { tree: &self, queue }
+        BreadthNewIter { tree: &self, queue }
     }
 }
 
-struct BreadthIter<'a, T> {
+pub struct BreadthNewIter<'a, T> {
     tree: &'a NTree<T>,
     queue: VecDeque<ArenaIndex>,
 }
 
-impl<'a, T> Iterator for BreadthIter<'a, T> {
-    type Item = ArenaIndex;
+impl<'a, T> Iterator for BreadthNewIter<'a, T> {
+    type Item = (ArenaIndex, &'a T);
 
-    fn next(&mut self) -> Option<ArenaIndex> {
+    fn next(&mut self) -> Option<Self::Item> {
         self.queue.pop_front().map(|front| {
             self.queue.extend(self.tree.children(front).unwrap());
-            front
-        })
-    }
-}
-
-pub struct BreadthValuesIter<'a, T> {
-    tree: &'a NTree<T>,
-    queue: VecDeque<ArenaIndex>,
-}
-
-impl<'a, T> Iterator for BreadthValuesIter<'a, T> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<&'a T> {
-        self.queue.pop_front().map(|front| {
-            self.queue.extend(self.tree.children(front).unwrap());
-            self.tree.value(front).unwrap()
+            (front, self.tree.value(front).unwrap())
         })
     }
 }
@@ -193,7 +171,7 @@ mod test {
 
         let child3 = tree.add_child(child0, "child3").unwrap();
 
-        let indices: Vec<ArenaIndex> = tree.bf_indices().collect();
+        let indices: Vec<ArenaIndex> = tree.bf_iter().map(|(i,v)| i).collect();
 
         assert_eq!(
             vec![tree.root_index(), child0, child1, child2, child3],
@@ -202,10 +180,43 @@ mod test {
     }
 
     #[test]
+    fn test_simple_bf_with_indices_and_values() {
+        let mut tree = NTree::new("root");
+        let child0 = tree.add_child(tree.root_index(), "child0").unwrap();
+        let child1 = tree.add_child(tree.root_index(), "child1").unwrap();
+        let child2 = tree.add_child(tree.root_index(), "child2").unwrap();
+
+        let child10 = tree.add_child(child1, "child10").unwrap();
+        let child11 = tree.add_child(child1, "child11").unwrap();
+        let child110 = tree.add_child(child11, "child110").unwrap();
+        let child20 = tree.add_child(child2, "child20").unwrap();
+        let child200 = tree.add_child(child20, "child200").unwrap();
+        let child201 = tree.add_child(child20, "child201").unwrap();
+        let child21 = tree.add_child(child2, "child21").unwrap();
+        let child210 = tree.add_child(child21, "child210").unwrap();
+
+        let values: Vec<(ArenaIndex, &str)> = tree.bf_iter().map(|(i,v)| (i, *v)).collect();
+        assert_eq!(vec![
+            (tree.root_index(), "root"),
+            (child0, "child0"),
+            (child1, "child1"),
+            (child2, "child2"),
+            (child10, "child10"),
+            (child11, "child11"),
+            (child20, "child20"),
+            (child21, "child21"),
+            (child110, "child110"),
+            (child200, "child200"),
+            (child201, "child201"),
+            (child210, "child210"),
+        ], values);
+    }
+
+    #[test]
     fn test_deep_iter_with_values() {
         let tree = make_a_big_tree();
 
-        let values: Vec<&str> = tree.bf_values().map(|s| *s).collect();
+        let values: Vec<&str> = tree.bf_iter().map(|(i, s)| *s).collect();
         assert_eq!(
             vec![
                 "root", "child0", "child1", "child2", "child00", "child01", "child02", "child03",

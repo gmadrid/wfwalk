@@ -4,8 +4,7 @@
 extern crate error_chain;
 
 mod arena;
-mod ntree;
-mod treereader;
+mod tree;
 
 mod errors {
     error_chain! {}
