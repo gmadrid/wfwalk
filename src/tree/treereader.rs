@@ -9,14 +9,26 @@ fn trim_with_length(s: &str) -> (&str, usize) {
     (trimmed, s.len() - trimmed.len())
 }
 
+fn trim_prefix<'a>(s: &'a str, prefix: Option<&str>) -> &'a str {
+    if let Some(p) = prefix {
+        if dbg!(s.starts_with(p)) {
+            let (_, new_str) = dbg!(s.split_at(p.len()));
+            return dbg!(new_str.trim_start());
+        }
+    }
+    s
+}
+
 struct BuildData<'a> {
     tree: &'a mut NTree<String>,
     stack: Vec<(usize, ArenaIndex)>,
+    prefix_pattern: Option<&'a str>,
 }
 
 impl<'a> BuildData<'a> {
     fn add(&mut self, s: &str) -> Result<()> {
-        let (trimmed, line_indent) = trim_with_length(s);
+        let (_trimmed, line_indent) = trim_with_length(s);
+        let trimmed = trim_prefix(_trimmed, self.prefix_pattern);
 
         // See if the indent level matches an existing level.
         let mut matched_level = self
@@ -67,13 +79,14 @@ impl<'a> BuildData<'a> {
     }
 }
 
-pub fn read_tree<R: BufRead>(reader: R) -> Result<NTree<String>> {
+pub fn read_tree<R: BufRead>(reader: R, prefix_pattern: Option<&str>) -> Result<NTree<String>> {
     let mut tree = NTree::new("ROOT".to_string());
     let root_index = tree.root_index();
 
     let mut data = BuildData {
         tree: &mut tree,
         stack: Vec::default(),
+        prefix_pattern,
     };
 
     for line in reader.lines() {
@@ -92,8 +105,7 @@ mod tests {
     use std::io::BufReader;
 
     fn bf_values_from_string(s: &'static str) -> Vec<String> {
-        //read_tree(BufReader::new(s.as_bytes())).unwrap().bf_values().map(|v| *v.clone()).collect()
-        let tree = read_tree(BufReader::new(s.as_bytes())).unwrap();
+        let tree = read_tree(BufReader::new(s.as_bytes()), None).unwrap();
         tree.bf_iter().map(|(i, s)| s.clone()).collect()
     }
 
@@ -221,7 +233,33 @@ TWO
 
     #[test]
     fn test_bad_indent() {
-        let bad = read_tree(BufReader::new(BAD_INDENT.as_bytes()));
+        let bad = read_tree(BufReader::new(BAD_INDENT.as_bytes()), None);
         assert!(bad.is_err());
+    }
+
+    #[test]
+    fn test_trim_prefix() {
+        // No prefix should return the string unchanged.
+        assert_eq!("quux", trim_prefix("quux", None));
+        assert_eq!("  quux", trim_prefix("  quux", None));
+        assert_eq!("- quux", trim_prefix("- quux", None));
+        assert_eq!("  - quux", trim_prefix("  - quux", None));
+
+        // A missing prefix should return the string unchanged.
+        assert_eq!("quux", trim_prefix("quux", Some("-")));
+        assert_eq!("  quux", trim_prefix("  quux", Some("-")));
+
+        // Remove the prefix and any spaces which remain.
+        assert_eq!("quux", trim_prefix("- quux", Some("-")));
+        assert_eq!("quux", trim_prefix("-    quux", Some("-")));
+
+        // The prefix must be at the very beginning of the string to have an effect.
+        assert_eq!("  - quux", trim_prefix("  - quux", Some("-")));
+
+        // A mis-matched prefix should have no effect.
+        assert_eq!("quux", trim_prefix("quux", Some("XXX")));
+        assert_eq!("  quux", trim_prefix("  quux", Some("XXX")));
+        assert_eq!("- quux", trim_prefix("- quux", Some("XXX")));
+        assert_eq!("  - quux", trim_prefix("  - quux", Some("XXX")));
     }
 }
