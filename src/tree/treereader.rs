@@ -67,7 +67,7 @@ impl<'a> BuildData<'a> {
     }
 }
 
-fn read_tree<R: BufRead>(reader: R) -> Result<NTree<String>> {
+pub fn read_tree<R: BufRead>(reader: R) -> Result<NTree<String>> {
     let mut tree = NTree::new("ROOT".to_string());
     let root_index = tree.root_index();
 

@@ -3,7 +3,7 @@
 #[macro_use]
 extern crate error_chain;
 
-mod tree;
+pub mod tree;
 
 mod errors {
     error_chain! {}
