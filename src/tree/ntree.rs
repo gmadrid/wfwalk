@@ -56,9 +56,13 @@ impl<T> NTree<T> {
     }
 
     pub fn bf_iter(&self) -> BreadthNewIter<T> {
+        self.bf_iter_from(self.root_index())
+    }
+
+    fn bf_iter_from(&self, idx: ArenaIndex) -> BreadthNewIter <T> {
         let mut queue = VecDeque::new();
-        queue.push_back(self.root_index());
-        BreadthNewIter { tree: &self, queue }
+        queue.push_back(idx);
+        BreadthNewIter { tree: self, queue }
     }
 }
 
@@ -186,6 +190,18 @@ mod test {
         let _child21 = tree.add_child(child2, "child21").unwrap();
 
         tree
+    }
+
+    #[test]
+    fn test_iter_from() {
+        let tree = make_a_big_tree();
+        let (child10, _) = tree.bf_iter().find(|(idx, val)| {
+           **val == "child01"
+        }).unwrap();
+
+        let values: Vec<String> = tree.bf_iter_from(child10).map(|(_, v)| v.to_string()).collect();
+
+        assert_eq!(vec!["child01", "child010", "child011"], values);
     }
 
     #[test]
