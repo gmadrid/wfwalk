@@ -31,7 +31,7 @@ impl<'a> BuildData<'a> {
         let trimmed = trim_prefix(_trimmed, self.prefix_pattern);
 
         // See if the indent level matches an existing level.
-        let mut matched_level = self
+        let matched_level = self
             .stack
             .iter()
             .enumerate()
@@ -81,7 +81,6 @@ impl<'a> BuildData<'a> {
 
 pub fn read_tree<R: BufRead>(reader: R, prefix_pattern: Option<&str>) -> Result<NTree<String>> {
     let mut tree = NTree::new("ROOT".to_string());
-    let root_index = tree.root_index();
 
     let mut data = BuildData {
         tree: &mut tree,

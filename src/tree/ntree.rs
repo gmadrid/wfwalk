@@ -32,11 +32,11 @@ impl<T> NTree<T> {
         self.root_index
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.arena.live_count()
     }
 
-    fn value(&self, index: ArenaIndex) -> Result<&T> {
+    pub fn value(&self, index: ArenaIndex) -> Result<&T> {
         Ok(&self.arena.value(index)?.value)
     }
 
@@ -51,7 +51,7 @@ impl<T> NTree<T> {
         Ok(new_node_index)
     }
 
-    fn children(&self, index: ArenaIndex) -> Result<&Vec<ArenaIndex>> {
+    pub fn children(&self, index: ArenaIndex) -> Result<&Vec<ArenaIndex>> {
         Ok(&self.arena.value(index)?.children)
     }
 
