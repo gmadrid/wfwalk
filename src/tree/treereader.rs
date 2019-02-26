@@ -11,9 +11,9 @@ fn trim_with_length(s: &str) -> (&str, usize) {
 
 fn trim_prefix<'a>(s: &'a str, prefix: Option<&str>) -> &'a str {
     if let Some(p) = prefix {
-        if dbg!(s.starts_with(p)) {
-            let (_, new_str) = dbg!(s.split_at(p.len()));
-            return dbg!(new_str.trim_start());
+        if s.starts_with(p) {
+            let (_, new_str) = s.split_at(p.len());
+            return new_str.trim_start();
         }
     }
     s

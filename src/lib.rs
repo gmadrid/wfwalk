@@ -5,6 +5,10 @@ extern crate error_chain;
 
 pub mod tree;
 
-mod errors {
-    error_chain! {}
+pub mod errors {
+    error_chain! {
+        foreign_links{
+            Io(::std::io::Error);
+        }
+    }
 }

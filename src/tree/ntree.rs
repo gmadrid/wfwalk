@@ -59,7 +59,7 @@ impl<T> NTree<T> {
         self.bf_iter_from(self.root_index())
     }
 
-    fn bf_iter_from(&self, idx: ArenaIndex) -> BreadthNewIter <T> {
+    pub fn bf_iter_from(&self, idx: ArenaIndex) -> BreadthNewIter <T> {
         let mut queue = VecDeque::new();
         queue.push_back(idx);
         BreadthNewIter { tree: self, queue }
