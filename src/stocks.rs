@@ -39,8 +39,6 @@ impl Stocks {
             stocks.insert(stock.symbol.clone(), stock);
         }
 
-        dbg!(&stocks);
-
         Ok(Stocks {
             //            tree,
             //            stocks_index,
@@ -130,7 +128,7 @@ mod parser {
 
     fn parse_num(str: &str) -> Result<f32> {
 
-        Ok(dbg!(str).trim().parse()?)
+        Ok(str.trim().parse()?)
     }
 
     fn parse_name(str: &str) -> Result<&str> {
@@ -157,7 +155,6 @@ mod parser {
     pub fn parse_stock(str: &str) -> Result<super::Stock> {
         // Stock   := Symbol '-' [ Name '-' ]? Num ['-' Tags]?
 
-        dbg!(str);
         let pieces: Vec<&str> = str.split(" - ").collect();
 
         let (symbol, name, num, tags) = match pieces.len() {
