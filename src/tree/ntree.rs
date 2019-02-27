@@ -97,7 +97,7 @@ where
     T: Display,
 {
     fn format_helper(&self, f: &mut Formatter, index: ArenaIndex, indent: usize) {
-        write!(f, "{2:1$}{0}\n", self.value(index).unwrap(), indent, "");
+        write!(f, "{2:1$}{0}\n", self.value(index).unwrap(), indent, "").unwrap();
         for child_index in self.children(index).unwrap() {
             self.format_helper(f, *child_index, indent + 3);
         }
@@ -180,8 +180,8 @@ mod test {
         let _child02 = tree.add_child(child0, "child02").unwrap();
         let _child03 = tree.add_child(child0, "child03").unwrap();
 
-        tree.add_child(child01, "child010");
-        tree.add_child(child01, "child011");
+        tree.add_child(child01, "child010").unwrap();
+        tree.add_child(child01, "child011").unwrap();
 
         let _child10 = tree.add_child(child1, "child10").unwrap();
         let _child11 = tree.add_child(child1, "child11").unwrap();
@@ -195,7 +195,7 @@ mod test {
     #[test]
     fn test_iter_from() {
         let tree = make_a_big_tree();
-        let (child10, _) = tree.bf_iter().find(|(idx, val)| {
+        let (child10, _) = tree.bf_iter().find(|(_, val)| {
            **val == "child01"
         }).unwrap();
 
@@ -213,7 +213,7 @@ mod test {
 
         let child3 = tree.add_child(child0, "child3").unwrap();
 
-        let indices: Vec<ArenaIndex> = tree.bf_iter().map(|(i, v)| i).collect();
+        let indices: Vec<ArenaIndex> = tree.bf_iter().map(|(i, _)| i).collect();
 
         assert_eq!(
             vec![tree.root_index(), child0, child1, child2, child3],
@@ -261,7 +261,7 @@ mod test {
     fn test_deep_iter_with_values() {
         let tree = make_a_big_tree();
 
-        let values: Vec<&str> = tree.bf_iter().map(|(i, s)| *s).collect();
+        let values: Vec<&str> = tree.bf_iter().map(|(_, s)| *s).collect();
         assert_eq!(
             vec![
                 "root", "child0", "child1", "child2", "child00", "child01", "child02", "child03",
@@ -288,23 +288,23 @@ mod test {
     #[test]
     fn test_display() {
         let mut tree = NTree::new("root");
-        let child0 = tree.add_child(tree.root_index(), "child0").unwrap();
+        let _child0 = tree.add_child(tree.root_index(), "child0").unwrap();
         let child1 = tree.add_child(tree.root_index(), "child1").unwrap();
         let child2 = tree.add_child(tree.root_index(), "child2").unwrap();
 
-        let child10 = tree.add_child(child1, "child10").unwrap();
+        let _child10 = tree.add_child(child1, "child10").unwrap();
         let child11 = tree.add_child(child1, "child11").unwrap();
-        let child110 = tree.add_child(child11, "child110").unwrap();
+        let _child110 = tree.add_child(child11, "child110").unwrap();
         let child20 = tree.add_child(child2, "child20").unwrap();
-        let child200 = tree.add_child(child20, "child200").unwrap();
-        let child201 = tree.add_child(child20, "child201").unwrap();
+        let _child200 = tree.add_child(child20, "child200").unwrap();
+        let _child201 = tree.add_child(child20, "child201").unwrap();
         let child21 = tree.add_child(child2, "child21").unwrap();
-        let child210 = tree.add_child(child21, "child210").unwrap();
+        let _child210 = tree.add_child(child21, "child210").unwrap();
 
         println!("{}", tree);
 
         let mut str = String::new();
-        write!(str, "{}", tree);
+        write!(str, "{}", tree).unwrap();
 
         assert_eq!(DISPLAY_TEST_OUTPUT, str);
     }

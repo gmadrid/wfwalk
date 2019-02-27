@@ -105,7 +105,7 @@ mod tests {
 
     fn bf_values_from_string(s: &'static str) -> Vec<String> {
         let tree = read_tree(BufReader::new(s.as_bytes()), None).unwrap();
-        tree.bf_iter().map(|(i, s)| s.clone()).collect()
+        tree.bf_iter().map(|(_, s)| s.clone()).collect()
     }
 
     #[test]

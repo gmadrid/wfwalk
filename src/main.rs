@@ -2,7 +2,8 @@ use wfwalk::errors::*;
 use wfwalk::stocks::Stocks;
 
 fn main() -> Result<()> {
-    let stocks = Stocks::load()?;
+    let stocks = dbg!(Stocks::load()?);
+
 
     Ok(())
 }

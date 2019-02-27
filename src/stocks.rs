@@ -8,15 +8,19 @@ use std::io::BufReader;
 
 type StockTree = NTree<String>;
 
+#[derive(Debug)]
 pub struct Stocks {
-    tree: NTree<String>,
-    stocks_index: ArenaIndex,
+    //    tree: NTree<String>,
+    //    stocks_index: ArenaIndex,
     stocks: HashMap<String, Stock>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Stock {
     symbol: String,
+    name: Option<String>,
+    num: f32,
+    tags: Vec<String>,
 }
 
 impl Stocks {
@@ -30,26 +34,27 @@ impl Stocks {
 
         let mut stocks = HashMap::new();
         for stock_index in tree.children(stocks_index)?.iter() {
-            let stock = Stocks::load_stock(&tree, *stock_index)?;
+            let str = tree.value(*stock_index)?;
+            let stock = parser::parse_stock(str)?;
             stocks.insert(stock.symbol.clone(), stock);
         }
 
         dbg!(&stocks);
 
         Ok(Stocks {
-            tree,
-            stocks_index,
+            //            tree,
+            //            stocks_index,
             stocks,
         })
     }
 
-    fn load_stock(tree: &StockTree, stock_index: ArenaIndex) -> Result<Stock> {
-        let pieces: Vec<&str> = tree.value(stock_index)?.split("-").collect();
-        let symbol = pieces[0].trim().to_string();
-
-        Ok(Stock { symbol })
-    }
-
+    //    fn load_stock(tree: &StockTree, stock_index: ArenaIndex) -> Result<Stock> {
+    //        let pieces: Vec<&str> = tree.value(stock_index)?.split("-").collect();
+    //        let symbol = pieces[0].trim().to_string();
+    //
+    //        Ok(Stock { symbol })
+    //    }
+    //
     fn find_stocks(tree: &StockTree) -> Result<ArenaIndex> {
         let finance_idx = tree
             .bf_iter()
@@ -84,7 +89,7 @@ mod parser {
     //     'Lots'
     //       <Lot>
     //
-    // Stock   := Symbol '-' [ Name '-' ]? Num '-' Tags
+    // Stock   := Symbol '-' [ Name '-' ]? Num ['-' Tags]?
     // Symbol  := /[A-Z.]*/
     // Name    := StringWithSpaces
     // Num     := A floating point number (no scientific notation)
@@ -124,7 +129,8 @@ mod parser {
     }
 
     fn parse_num(str: &str) -> Result<f32> {
-        Ok(str.trim().parse()?)
+
+        Ok(dbg!(str).trim().parse()?)
     }
 
     fn parse_name(str: &str) -> Result<&str> {
@@ -135,24 +141,142 @@ mod parser {
         let result = str.trim();
 
         // Test for _invalid_ characters.
-        let test = result.contains(|c: char| {
-            !c.is_ascii_uppercase() && c != '.'
-        });
+        let test = result.contains(|c: char| !c.is_ascii_uppercase() && c != '.');
 
         if test {
             bail!(ErrorKind::BadParse(
-            "SYMBOL".to_string(),
-            "must contain only A-Z and '.'".to_string(),
-            "".to_string()
+                "SYMBOL".to_string(),
+                "must contain only A-Z and '.'".to_string(),
+                str.to_string()
             ));
         }
 
         Ok(result)
     }
 
+    pub fn parse_stock(str: &str) -> Result<super::Stock> {
+        // Stock   := Symbol '-' [ Name '-' ]? Num ['-' Tags]?
+
+        dbg!(str);
+        let pieces: Vec<&str> = str.split(" - ").collect();
+
+        let (symbol, name, num, tags) = match pieces.len() {
+            4 => {
+                let symbol = parse_symbol(pieces[0])?.into();
+                let name = Some(parse_name(pieces[1])?.into());
+                let num = parse_num(pieces[2])?;
+                let tags = parse_tags(pieces[3])?
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect();
+                Ok((symbol, name, num, tags))
+            }
+            3 => {
+                // Can be either symbol/name/num or symbol/num/tags.
+                // Try to tell them apart by parsing the num field.
+                let symbol = parse_symbol(pieces[0])?.into();
+                if let Ok(num) = parse_num(pieces[2]) {
+                    let name = parse_name(pieces[1])?.into();
+                    Ok((symbol, Some(name), num, vec![]))
+                } else {
+                    let num = parse_num(pieces[1])?;
+                    let tags = parse_tags(pieces[2])?
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect();
+                    Ok((symbol, None, num, tags))
+                }
+            }
+            2 => {
+                // Only two components, it must be symbol and num.
+                let symbol = parse_symbol(pieces[0])?.into();
+                let num = parse_num(pieces[1])?;
+                Ok((symbol, None, num, vec![]))
+            }
+            i if i > 4 => Err(ErrorKind::BadParse(
+                "Stock".to_string(),
+                "Extra components".to_string(),
+                str.to_string(),
+            )),
+            _ => Err(ErrorKind::BadParse(
+                "Stock".to_string(),
+                "Missing components".to_string(),
+                str.to_string(),
+            )),
+        }?;
+
+        Ok(super::Stock {
+            symbol,
+            name,
+            num,
+            tags,
+        })
+    }
+
     #[cfg(test)]
     mod tests {
+        use super::super::Stock;
         use super::*;
+
+        #[test]
+        fn test_bad_stock() {
+            assert_eq!(Stock {
+                symbol: "CL".to_owned(),
+                name: None,
+                num: -33.0,
+                tags: vec!["@etrade".to_string(), "@longshort".to_string(), "@short".to_string()],
+            }, dbg!(parse_stock("CL - -33 - @etrade @longshort @short").unwrap()));
+        }
+
+        #[test]
+        fn test_stock() {
+            assert_eq!(
+                Stock {
+                    symbol: "AAPL".to_owned(),
+                    name: Some("Apple Computer".to_owned()),
+                    num: 3.0,
+                    tags: vec!["@foo".to_string(), "#bar".to_string()],
+                },
+                parse_stock("AAPL - Apple Computer - 3 - @foo #bar").unwrap()
+            );
+
+            // Test present, but empty, tags.
+
+            // Test missing name
+            assert_eq!(
+                Stock {
+                    symbol: "AAPL".to_owned(),
+                    name: None,
+                    num: 3.0,
+                    tags: vec!["@foo".to_string()],
+                },
+                parse_stock("AAPL - 3 - @foo").unwrap()
+            );
+
+            // Test missing tags
+            assert_eq!(
+                Stock {
+                        symbol: "AAPL".to_owned(),
+                    name: Some("Apple Computer".to_owned()),
+                    num: 3.0,
+                    tags: vec![],
+                },
+                parse_stock("AAPL - Apple Computer - 3").unwrap()
+            );
+
+            // Test missing both name and tags
+            assert_eq!(Stock{
+                symbol: "AAPL".to_owned(),
+                name: None,
+                num: 3.0,
+                tags: vec![],
+            }, parse_stock("AAPL - 3").unwrap());
+
+            assert!(parse_stock("").is_err());
+            assert!(parse_stock("FOO").is_err());
+            assert!(parse_stock("FOO - BAR").is_err());
+            assert!(parse_stock("FOO - BAR - BAZ - QUUX - BAM").is_err());
+        }
 
         #[test]
         fn test_symbol() {
