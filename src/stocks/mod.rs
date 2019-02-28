@@ -6,12 +6,12 @@ use std::collections::hash_map::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 
+mod sanity;
+
 type StockTree = NTree<String>;
 
 #[derive(Debug)]
 pub struct Stocks {
-    //    tree: NTree<String>,
-    //    stocks_index: ArenaIndex,
     stocks: HashMap<String, Stock>,
 }
 
@@ -30,7 +30,7 @@ impl Stocks {
         let bufread = BufReader::new(f);
         let tree = read_tree(bufread, Some("-"))?;
 
-        let stocks_index = Stocks::find_stocks(&tree)?;
+        let stocks_index = Stocks::find_stocks_node(&tree)?;
 
         let mut stocks = HashMap::new();
         for stock_index in tree.children(stocks_index)?.iter() {
@@ -39,41 +39,15 @@ impl Stocks {
             stocks.insert(stock.symbol.clone(), stock);
         }
 
-        Ok(Stocks {
-            //            tree,
-            //            stocks_index,
-            stocks,
-        })
+        Ok(Stocks { stocks })
     }
 
-    //    fn load_stock(tree: &StockTree, stock_index: ArenaIndex) -> Result<Stock> {
-    //        let pieces: Vec<&str> = tree.value(stock_index)?.split("-").collect();
-    //        let symbol = pieces[0].trim().to_string();
-    //
-    //        Ok(Stock { symbol })
-    //    }
-    //
-    fn find_stocks(tree: &StockTree) -> Result<ArenaIndex> {
+    fn find_stocks_node(tree: &StockTree) -> Result<ArenaIndex> {
         let finance_idx = tree
-            .bf_iter()
-            .find_map(|(idx, val)| {
-                if val.trim() == "Finance" {
-                    Some(idx)
-                } else {
-                    None
-                }
-            })
-            .ok_or_else(|| ErrorKind::Msg("Failed to find 'Finance' node.".into()))?;
-
+            .find_node(tree.root_index(), |(_, val)| val.trim() == "Finance")
+            .ok_or_else(|| ErrorKind::Msg("Failed to find 'Finance' node".into()))?;
         let stocks_idx = tree
-            .bf_iter_from(finance_idx)
-            .find_map(|(idx, val)| {
-                if val.trim() == "Stocks" {
-                    Some(idx)
-                } else {
-                    None
-                }
-            })
+            .find_node(finance_idx, |(_, val)| val.trim() == "Stocks")
             .ok_or_else(|| ErrorKind::Msg("Failed to find 'Stocks' node.".into()))?;
 
         Ok(stocks_idx)
@@ -127,7 +101,6 @@ mod parser {
     }
 
     fn parse_num(str: &str) -> Result<f32> {
-
         Ok(str.trim().parse()?)
     }
 
@@ -217,12 +190,19 @@ mod parser {
 
         #[test]
         fn test_bad_stock() {
-            assert_eq!(Stock {
-                symbol: "CL".to_owned(),
-                name: None,
-                num: -33.0,
-                tags: vec!["@etrade".to_string(), "@longshort".to_string(), "@short".to_string()],
-            }, dbg!(parse_stock("CL - -33 - @etrade @longshort @short").unwrap()));
+            assert_eq!(
+                Stock {
+                    symbol: "CL".to_owned(),
+                    name: None,
+                    num: -33.0,
+                    tags: vec![
+                        "@etrade".to_string(),
+                        "@longshort".to_string(),
+                        "@short".to_string()
+                    ],
+                },
+                dbg!(parse_stock("CL - -33 - @etrade @longshort @short").unwrap())
+            );
         }
 
         #[test]
@@ -253,7 +233,7 @@ mod parser {
             // Test missing tags
             assert_eq!(
                 Stock {
-                        symbol: "AAPL".to_owned(),
+                    symbol: "AAPL".to_owned(),
                     name: Some("Apple Computer".to_owned()),
                     num: 3.0,
                     tags: vec![],
@@ -262,12 +242,15 @@ mod parser {
             );
 
             // Test missing both name and tags
-            assert_eq!(Stock{
-                symbol: "AAPL".to_owned(),
-                name: None,
-                num: 3.0,
-                tags: vec![],
-            }, parse_stock("AAPL - 3").unwrap());
+            assert_eq!(
+                Stock {
+                    symbol: "AAPL".to_owned(),
+                    name: None,
+                    num: 3.0,
+                    tags: vec![],
+                },
+                parse_stock("AAPL - 3").unwrap()
+            );
 
             assert!(parse_stock("").is_err());
             assert!(parse_stock("FOO").is_err());

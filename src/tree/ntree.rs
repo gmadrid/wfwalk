@@ -59,10 +59,18 @@ impl<T> NTree<T> {
         self.bf_iter_from(self.root_index())
     }
 
-    pub fn bf_iter_from(&self, idx: ArenaIndex) -> BreadthNewIter <T> {
+    pub fn bf_iter_from(&self, idx: ArenaIndex) -> BreadthNewIter<T> {
         let mut queue = VecDeque::new();
         queue.push_back(idx);
         BreadthNewIter { tree: self, queue }
+    }
+
+    pub fn find_node<F>(&self, start_index: ArenaIndex, f: F) -> Option<ArenaIndex>
+    where
+        F: Fn((ArenaIndex, &T)) -> bool,
+    {
+        self.bf_iter_from(start_index)
+            .find_map(|pair| if f(pair) { Some(pair.0) } else { None })
     }
 }
 
@@ -195,11 +203,12 @@ mod test {
     #[test]
     fn test_iter_from() {
         let tree = make_a_big_tree();
-        let (child10, _) = tree.bf_iter().find(|(_, val)| {
-           **val == "child01"
-        }).unwrap();
+        let (child10, _) = tree.bf_iter().find(|(_, val)| **val == "child01").unwrap();
 
-        let values: Vec<String> = tree.bf_iter_from(child10).map(|(_, v)| v.to_string()).collect();
+        let values: Vec<String> = tree
+            .bf_iter_from(child10)
+            .map(|(_, v)| v.to_string())
+            .collect();
 
         assert_eq!(vec!["child01", "child010", "child011"], values);
     }
