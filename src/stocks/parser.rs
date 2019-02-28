@@ -21,8 +21,8 @@ fn parse_tag(str: &str) -> Result<&str> {
     let result = str.trim();
     if !result.starts_with("@") && !result.starts_with("#") {
         bail!(ErrorKind::BadParse(
-            "TAG".to_string(),
-            "must begin with '@' or '#'.".to_string(),
+            "TAG",
+            "must begin with '@' or '#'.",
             "".to_string()
         ));
     }
@@ -59,8 +59,8 @@ fn parse_symbol(str: &str) -> Result<&str> {
 
     if test {
         bail!(ErrorKind::BadParse(
-            "SYMBOL".to_string(),
-            "must contain only A-Z and '.'".to_string(),
+            "SYMBOL",
+            "must contain only A-Z and '.'",
             str.to_string()
         ));
     }
@@ -107,13 +107,13 @@ pub fn parse_stock(str: &str) -> Result<super::Stock> {
             Ok((symbol, None, num, vec![]))
         }
         i if i > 4 => Err(ErrorKind::BadParse(
-            "Stock".to_string(),
-            "Extra components".to_string(),
+            "Stock",
+            "Extra components",
             str.to_string(),
         )),
         _ => Err(ErrorKind::BadParse(
-            "Stock".to_string(),
-            "Missing components".to_string(),
+            "Stock",
+            "Missing components",
             str.to_string(),
         )),
     }?;
@@ -128,6 +128,8 @@ pub fn parse_stock(str: &str) -> Result<super::Stock> {
 
 #[cfg(test)]
 mod tests {
+    use crate::type_tools::VecTools;
+
     use super::super::Stock;
     use super::*;
 
@@ -135,14 +137,14 @@ mod tests {
     fn test_bad_stock() {
         assert_eq!(
             Stock {
-                symbol: "CL".to_owned(),
+                symbol: "CL".into(),
                 name: None,
                 num: -33.0,
                 tags: vec![
-                    "@etrade".to_string(),
-                    "@longshort".to_string(),
-                    "@short".to_string()
-                ],
+                    "@etrade",
+                    "@longshort",
+                    "@short"
+                ].to_strings(),
             },
             dbg!(parse_stock("CL - -33 - @etrade @longshort @short").unwrap())
         );
@@ -152,10 +154,10 @@ mod tests {
     fn test_stock() {
         assert_eq!(
             Stock {
-                symbol: "AAPL".to_owned(),
-                name: Some("Apple Computer".to_owned()),
+                symbol: "AAPL".into(),
+                name: Some("Apple Computer".into()),
                 num: 3.0,
-                tags: vec!["@foo".to_string(), "#bar".to_string()],
+                tags: vec!["@foo", "#bar"].to_strings(),
             },
             parse_stock("AAPL - Apple Computer - 3 - @foo #bar").unwrap()
         );

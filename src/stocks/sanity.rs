@@ -43,13 +43,13 @@ fn has_brokerage_tag(stock: &Stock) -> Option<Insanity> {
 }
 
 fn has_short_tag_if_needed(stock: &Stock) -> Option<Insanity> {
-    unimplemented!()
+    None
 }
 
 fn has_portfolio_tag(stock: &Stock) -> Option<Insanity> {
-    unimplemented!()
+    None
 }
 
 fn has_lots(stock: &Stock) -> Option<Insanity> {
-    unimplemented!()
+    None
 }
