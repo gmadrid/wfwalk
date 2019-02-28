@@ -25,13 +25,15 @@ pub trait BoolTools {
 }
 
 impl BoolTools for bool {
-    fn then<T, F>(self, f: F) -> Option<T> where
-        F: FnOnce() -> T {
-            if self {
-                Some(f())
-            } else {
-                None
-            }
+    fn then<T, F>(self, f: F) -> Option<T>
+    where
+        F: FnOnce() -> T,
+    {
+        if self {
+            Some(f())
+        } else {
+            None
+        }
     }
 }
 
@@ -39,7 +41,10 @@ pub trait VecTools {
     fn to_strings(&self) -> Vec<String>;
 }
 
-impl<T> VecTools for Vec<T> where T: ToString {
+impl<T> VecTools for Vec<T>
+where
+    T: ToString,
+{
     fn to_strings(&self) -> Vec<String> {
         self.iter().map(|s| s.to_string()).collect()
     }
@@ -63,9 +68,13 @@ mod tests {
 
     #[test]
     fn test_to_strings() {
-        assert_eq!(vec!["one".to_string(), "two".to_string()],
-                   vec!["one", "two"].to_strings());
-        assert_eq!(vec!["1".to_string(), "2".to_string(), "3".to_string()],
-            vec![1, 2, 3].to_strings());
+        assert_eq!(
+            vec!["one".to_string(), "two".to_string()],
+            vec!["one", "two"].to_strings()
+        );
+        assert_eq!(
+            vec!["1".to_string(), "2".to_string(), "3".to_string()],
+            vec![1, 2, 3].to_strings()
+        );
     }
 }
