@@ -205,9 +205,9 @@ mod test {
         let tree = make_a_big_tree();
         let (child10, _) = tree.bf_iter().find(|(_, val)| **val == "child01").unwrap();
 
-        let values: Vec<String> = tree
+        let values: Vec<&str> = tree
             .bf_iter_from(child10)
-            .map(|(_, v)| v.to_string())
+            .map(|(_, v)| *v)
             .collect();
 
         assert_eq!(vec!["child01", "child010", "child011"], values);

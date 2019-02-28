@@ -2,10 +2,13 @@ use std::collections::HashSet;
 use std::iter::FromIterator;
 
 use super::Stock;
+use crate::OptionTools;
+use crate::BoolTools;
+use crate::VecTools;
 
 lazy_static! {
     static ref brokerage_tags: HashSet<String> = {
-        HashSet::from_iter(as_strings(vec!["@etrade", "@ally"]))
+        HashSet::from_iter(vec!["@etrade", "@ally"].to_strings())
     };
 }
 
@@ -29,36 +32,15 @@ fn sanity_check(stock: Stock) -> Vec<Insanity> {
     insanities
 }
 
-trait MapNone {
-    fn map_none<U, F>(&self, f: F) -> Option<U> where F: FnOnce() -> U;
-}
-
-impl<T> MapNone for Option<T> {
-    fn map_none<U, F>(&self, f: F) -> Option<U> where F: FnOnce() -> U {
-        match self {
-            Some(_) => None,
-            None => Some(f())
-        }
-    }
-}
-
-fn map_true<T, F>(val: bool, f: F) -> Option<T> where F: FnOnce() -> T {
-    if val { Some(f())} else { None }
-}
-
-fn as_strings(v: Vec<&str>) -> Vec<String> {
-    v.iter().map(|s| s.to_string()).collect()
-}
-
 fn has_name(stock: &Stock) -> Option<Insanity> {
-    stock.name.map_none(|| "missing name.".into())
+    stock.name.not(|| "missing name.".into())
 }
 
 fn has_brokerage_tag(stock: &Stock) -> Option<Insanity> {
     // TODO: Wow! This is inefficient.
     let tag_set = HashSet::from_iter(stock.tags.clone());
 
-    map_true(tag_set.is_disjoint(&*brokerage_tags), || "has no brokerage tag".into())
+    tag_set.is_disjoint(&*brokerage_tags).then(|| "has no brokerage tag".into())
 }
 
 fn has_short_tag_if_needed(stock: &Stock) -> Option<Insanity> {

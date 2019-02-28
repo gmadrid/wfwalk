@@ -8,6 +8,7 @@ extern crate lazy_static;
 
 pub mod stocks;
 pub mod tree;
+mod type_tools;
 
 pub mod errors {
     error_chain! {
@@ -24,3 +25,5 @@ pub mod errors {
         }
     }
 }
+
+use type_tools::{BoolTools, OptionTools, VecTools};
