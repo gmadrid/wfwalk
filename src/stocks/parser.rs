@@ -15,6 +15,8 @@
 //
 // All whitespace is ignored except in StringWithSpaces.
 
+use std::collections::hash_set::HashSet;
+
 use crate::errors::*;
 
 fn parse_tag(str: &str) -> Result<&str> {
@@ -35,10 +37,10 @@ fn parse_tag(str: &str) -> Result<&str> {
     Ok(str.trim())
 }
 
-fn parse_tags(str: &str) -> Result<Vec<&str>> {
-    let mut result = Vec::new();
+fn parse_tags(str: &str) -> Result<HashSet<&str>> {
+    let mut result = HashSet::new();
     for tag in str.split_whitespace() {
-        result.push(parse_tag(tag)?);
+        result.insert(parse_tag(tag)?);
     }
     Ok(result)
 }
@@ -90,7 +92,7 @@ pub fn parse_stock(str: &str) -> Result<super::Stock> {
             let symbol = parse_symbol(pieces[0])?.into();
             if let Ok(num) = parse_num(pieces[2]) {
                 let name = parse_name(pieces[1])?.into();
-                Ok((symbol, Some(name), num, vec![]))
+                Ok((symbol, Some(name), num, HashSet::new()))
             } else {
                 let num = parse_num(pieces[1])?;
                 let tags = parse_tags(pieces[2])?
@@ -104,7 +106,7 @@ pub fn parse_stock(str: &str) -> Result<super::Stock> {
             // Only two components, it must be symbol and num.
             let symbol = parse_symbol(pieces[0])?.into();
             let num = parse_num(pieces[1])?;
-            Ok((symbol, None, num, vec![]))
+            Ok((symbol, None, num, HashSet::new()))
         }
         i if i > 4 => Err(ErrorKind::BadParse(
             "Stock",
@@ -128,6 +130,7 @@ pub fn parse_stock(str: &str) -> Result<super::Stock> {
 
 #[cfg(test)]
 mod tests {
+    use std::iter::FromIterator;
     use crate::type_tools::VecTools;
 
     use super::super::Stock;
@@ -140,11 +143,11 @@ mod tests {
                 symbol: "CL".into(),
                 name: None,
                 num: -33.0,
-                tags: vec![
+                tags: HashSet::from_iter(vec![
                     "@etrade",
                     "@longshort",
                     "@short"
-                ].to_strings(),
+                ].to_strings().into_iter()),
             },
             dbg!(parse_stock("CL - -33 - @etrade @longshort @short").unwrap())
         );
@@ -157,7 +160,7 @@ mod tests {
                 symbol: "AAPL".into(),
                 name: Some("Apple Computer".into()),
                 num: 3.0,
-                tags: vec!["@foo", "#bar"].to_strings(),
+                tags: HashSet::from_iter(vec!["@foo", "#bar"].to_strings().into_iter()),
             },
             parse_stock("AAPL - Apple Computer - 3 - @foo #bar").unwrap()
         );
@@ -170,7 +173,7 @@ mod tests {
                 symbol: "AAPL".to_owned(),
                 name: None,
                 num: 3.0,
-                tags: vec!["@foo".to_string()],
+                tags: HashSet::from_iter(vec!["@foo".to_string()].into_iter()),
             },
             parse_stock("AAPL - 3 - @foo").unwrap()
         );
@@ -181,7 +184,7 @@ mod tests {
                 symbol: "AAPL".to_owned(),
                 name: Some("Apple Computer".to_owned()),
                 num: 3.0,
-                tags: vec![],
+                tags: HashSet::new(),
             },
             parse_stock("AAPL - Apple Computer - 3").unwrap()
         );
@@ -192,7 +195,7 @@ mod tests {
                 symbol: "AAPL".to_owned(),
                 name: None,
                 num: 3.0,
-                tags: vec![],
+                tags: HashSet::new(),
             },
             parse_stock("AAPL - 3").unwrap()
         );
@@ -248,18 +251,18 @@ mod tests {
 
     #[test]
     fn test_tags() {
-        assert_eq!(Vec::<&'static str>::new(), parse_tags("").unwrap());
-        assert_eq!(vec!["@one"], parse_tags("@one").unwrap());
+        assert_eq!(HashSet::<&'static str>::new(), parse_tags("").unwrap());
+        assert_eq!(HashSet::from_iter(vec!["@one"].into_iter()), parse_tags("@one").unwrap());
         assert_eq!(
-            vec!["@one", "#two", "@three"],
+            HashSet::from_iter(vec!["@one", "#two", "@three"].into_iter()),
             parse_tags("@one #two @three").unwrap()
         );
         assert_eq!(
-            vec!["@one", "#two", "@three"],
+            HashSet::from_iter(vec!["@one", "#two", "@three"].into_iter()),
             parse_tags("  @one #two @three  ").unwrap()
         );
         assert_eq!(
-            vec!["@one", "#two", "@three"],
+            HashSet::from_iter(vec!["@one", "#two", "@three"].into_iter()),
             parse_tags("@one    #two   @three").unwrap()
         );
     }

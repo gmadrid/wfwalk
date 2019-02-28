@@ -5,8 +5,10 @@ use super::Stock;
 use crate::type_tools::{BoolTools, OptionTools, VecTools};
 
 lazy_static! {
-    static ref brokerage_tags: HashSet<String> =
+    static ref BROKERAGE_TAGS: HashSet<String> =
         { HashSet::from_iter(vec!["@etrade", "@ally"].to_strings()) };
+    static ref PORTFOLIO_TAGS: HashSet<String> =
+        { HashSet::from_iter(vec!["@ally", "@longshort", "@marijuana", "@misc"].to_strings()) };
 }
 
 type Insanity = String;
@@ -34,16 +36,15 @@ fn has_name(stock: &Stock) -> Option<Insanity> {
 }
 
 fn has_brokerage_tag(stock: &Stock) -> Option<Insanity> {
-    // TODO: Wow! This is inefficient.
-    let tag_set = HashSet::from_iter(stock.tags.clone());
-
-    tag_set
-        .is_disjoint(&*brokerage_tags)
+    stock
+        .tags
+        .is_disjoint(&BROKERAGE_TAGS)
         .then(|| "has no brokerage tag".into())
 }
 
 fn has_short_tag_if_needed(stock: &Stock) -> Option<Insanity> {
-    None
+    (stock.num < 0.0 && !stock.tags.contains(&"@short".to_string()))
+        .then(|| "has no short tag".into())
 }
 
 fn has_portfolio_tag(stock: &Stock) -> Option<Insanity> {
