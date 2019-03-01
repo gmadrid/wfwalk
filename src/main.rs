@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate clap;
 
+use std::{thread, time};
+
 use wfwalk::errors::*;
 use wfwalk::stocks::sanity_check;
 use wfwalk::stocks::Stocks;
@@ -20,6 +22,16 @@ fn real_main() -> Result<()> {
             println!("{:?}", foo)
         }
     }
+
+    let client = alphavantage::Client::new("OVI13JKC3O31YFSR");
+    for stock in stocks.stocks.values() {
+        print!("{}: \n", stock.symbol);
+        let time_series = client.get_time_series_daily(&stock.symbol).unwrap();
+        let entry = time_series.entries.last().unwrap();
+        println!("{:?}", entry);
+        thread::sleep(time::Duration::from_millis(5000));
+    }
+
     Ok(())
 }
 

@@ -5,6 +5,7 @@ authors = ["George Madrid <gmadrid@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+alphavantage = "0.5.0"
 clap = "2.32.0"
 error-chain = "0.12.0"
 log-derive = "0.2"
