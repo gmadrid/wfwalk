@@ -1,8 +1,17 @@
+#[macro_use]
+extern crate clap;
+
 use wfwalk::errors::*;
 use wfwalk::stocks::sanity_check;
 use wfwalk::stocks::Stocks;
 
-fn main() -> Result<()> {
+mod args;
+
+use args::Args;
+
+fn real_main() -> Result<()> {
+        let args = Args::parse()?;
+
     let stocks = Stocks::load()?;
     for stock in stocks.stocks.values() {
         let foo = sanity_check(&stock);
@@ -12,4 +21,17 @@ fn main() -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn main() {
+    match real_main() {
+        Ok(_) => (),
+        Err(err) => {
+            match err {
+                // Clap gets special attention. ('-h' for example is better handled by clap.)
+                Error(ErrorKind::Clap(ce), _) => ce.exit(),
+                _ => println!("Error: {}", err),
+            }
+        }
+    }
 }

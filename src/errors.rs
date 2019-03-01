@@ -8,6 +8,7 @@ error_chain! {
     }
 
     foreign_links{
+        Clap(clap::Error);
         Io(::std::io::Error);
         ParseFloat(::std::num::ParseFloatError);
     }
