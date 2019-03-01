@@ -1,6 +1,6 @@
 use wfwalk::errors::*;
-use wfwalk::stocks::Stocks;
 use wfwalk::stocks::sanity_check;
+use wfwalk::stocks::Stocks;
 
 fn main() -> Result<()> {
     let stocks = Stocks::load()?;

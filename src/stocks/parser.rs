@@ -130,8 +130,8 @@ pub fn parse_stock(str: &str) -> Result<super::Stock> {
 
 #[cfg(test)]
 mod tests {
-    use std::iter::FromIterator;
     use crate::type_tools::VecTools;
+    use std::iter::FromIterator;
 
     use super::super::Stock;
     use super::*;
@@ -143,11 +143,11 @@ mod tests {
                 symbol: "CL".into(),
                 name: None,
                 num: -33.0,
-                tags: HashSet::from_iter(vec![
-                    "@etrade",
-                    "@longshort",
-                    "@short"
-                ].to_strings().into_iter()),
+                tags: HashSet::from_iter(
+                    vec!["@etrade", "@longshort", "@short"]
+                        .to_strings()
+                        .into_iter()
+                ),
             },
             dbg!(parse_stock("CL - -33 - @etrade @longshort @short").unwrap())
         );
@@ -252,7 +252,10 @@ mod tests {
     #[test]
     fn test_tags() {
         assert_eq!(HashSet::<&'static str>::new(), parse_tags("").unwrap());
-        assert_eq!(HashSet::from_iter(vec!["@one"].into_iter()), parse_tags("@one").unwrap());
+        assert_eq!(
+            HashSet::from_iter(vec!["@one"].into_iter()),
+            parse_tags("@one").unwrap()
+        );
         assert_eq!(
             HashSet::from_iter(vec!["@one", "#two", "@three"].into_iter()),
             parse_tags("@one #two @three").unwrap()

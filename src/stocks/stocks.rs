@@ -3,8 +3,8 @@ use crate::tree::read_tree;
 use crate::tree::ArenaIndex;
 use crate::tree::NTree;
 
-use std::collections::hash_set::HashSet;
 use std::collections::hash_map::HashMap;
+use std::collections::hash_set::HashSet;
 use std::fs::File;
 use std::io::BufReader;
 

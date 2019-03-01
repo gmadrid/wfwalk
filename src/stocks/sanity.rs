@@ -20,7 +20,7 @@ const SANITY_TESTS: &'static [fn(&Stock) -> Option<Insanity>] = &[
     has_short_tag_if_needed,
     no_short_if_not_needed,
     has_portfolio_tag,
-    has_lots,
+    //    has_lots,
 ];
 
 type Insanity = String;
@@ -53,12 +53,15 @@ fn no_short_if_not_needed(stock: &Stock) -> Option<Insanity> {
 }
 
 fn has_portfolio_tag(stock: &Stock) -> Option<Insanity> {
-    None
+    stock
+        .tags
+        .is_disjoint(&PORTFOLIO_TAGS)
+        .then(|| "has no portfolio tag".into())
 }
 
-fn has_lots(stock: &Stock) -> Option<Insanity> {
-    None
-}
+//fn has_lots(stock: &Stock) -> Option<Insanity> {
+//    None
+//}
 
 #[cfg(test)]
 mod tests {
