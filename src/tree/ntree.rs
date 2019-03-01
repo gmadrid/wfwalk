@@ -12,7 +12,6 @@ pub struct NTree<T> {
 
 struct NTreeNode<T> {
     value: T,
-    parent: Option<ArenaIndex>,
     children: Vec<ArenaIndex>,
 }
 
@@ -21,7 +20,6 @@ impl<T> NTree<T> {
         let mut arena: Arena<NTreeNode<T>> = Arena::new();
         let root = NTreeNode {
             value: root_value,
-            parent: None,
             children: vec![],
         };
         let root_index = arena.alloc(root);
@@ -43,7 +41,6 @@ impl<T> NTree<T> {
     pub fn add_child(&mut self, index: ArenaIndex, value: T) -> Result<ArenaIndex> {
         let new_node = NTreeNode {
             value,
-            parent: Some(index),
             children: vec![],
         };
         let new_node_index = self.arena.alloc(new_node);

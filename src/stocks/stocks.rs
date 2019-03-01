@@ -14,7 +14,7 @@ type StockTree = NTree<String>;
 
 #[derive(Debug)]
 pub struct Stocks {
-    stocks: HashMap<String, Stock>,
+    pub stocks: HashMap<String, Stock>,
 }
 
 #[derive(Debug, PartialEq)]

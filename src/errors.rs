@@ -1,3 +1,4 @@
+// TODO: figure out a non-deprecated way forward for error handling.
 error_chain! {
     errors {
         BadParse(nonterminal: &'static str, desc: &'static str, _text: String) {
