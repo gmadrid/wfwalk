@@ -86,6 +86,15 @@ mod tests {
         )
     }
 
+    fn apple_with_tag(tag: &str) -> Stock {
+        let tags = HashSet::from_iter(vec![tag.to_string()].into_iter());
+
+        Stock {
+            tags,
+            ..make_apple()
+        }
+    }
+
     #[test]
     fn test_has_name() {
         assert!(has_name(&make_apple()).is_none());
@@ -115,11 +124,16 @@ mod tests {
 
         assert!(has_short_tag_if_needed(&make_apple()).is_none());
         assert!(has_short_tag_if_needed(&short).is_some());
-        assert!(has_short_tag_if_needed(&Stock {
-            tags: HashSet::from_iter(vec!["@short".to_string()].into_iter()),
-            ..short
-        })
-        .is_none());
+        assert!(has_short_tag_if_needed(&apple_with_tag("@short")).is_none());
+    }
+
+    #[test]
+    fn has_portfolio_tag_test() {
+        assert!(has_portfolio_tag(&apple_with_tag("@misc")).is_none());
+        assert!(has_portfolio_tag(&apple_with_tag("@ally")).is_none());
+        assert!(has_portfolio_tag(&apple_with_tag("@longshort")).is_none());
+        assert!(has_portfolio_tag(&apple_with_tag("@marijuana")).is_none());
+        assert!(has_portfolio_tag(&apple_with_tag("@foobar")).is_some());
     }
 
 }
