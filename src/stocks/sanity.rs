@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
+use itertools::Itertools;
+
 use super::Stock;
 use crate::type_tools::{BoolTools, OptionTools, VecTools};
 
@@ -9,27 +11,25 @@ lazy_static! {
         { HashSet::from_iter(vec!["@etrade", "@ally"].to_strings()) };
     static ref PORTFOLIO_TAGS: HashSet<String> =
         { HashSet::from_iter(vec!["@ally", "@longshort", "@marijuana", "@misc"].to_strings()) };
+    static ref SHORT_TAGS: HashSet<String> = { HashSet::from_iter(vec!["@short",].to_strings()) };
 }
+
+const SANITY_TESTS: &'static [fn(&Stock) -> Option<Insanity>] = &[
+    has_name,
+    has_brokerage_tag,
+    has_short_tag_if_needed,
+    no_short_if_not_needed,
+    has_portfolio_tag,
+    has_lots,
+];
 
 type Insanity = String;
 
 pub fn sanity_check(stock: &Stock) -> Vec<Insanity> {
-    let mut insanities = vec![];
-
-    let tests: Vec<fn(&Stock) -> Option<Insanity>> = vec![
-        has_name,
-        has_brokerage_tag,
-        has_short_tag_if_needed,
-        no_short_if_not_needed,
-        has_portfolio_tag,
-        has_lots,
-    ];
-
-    for test in tests {
-        test(&stock).map(|i| insanities.push(i));
-    }
-
-    insanities
+    SANITY_TESTS
+        .iter()
+        .flat_map(|test| test(stock))
+        .collect_vec()
 }
 
 fn has_name(stock: &Stock) -> Option<Insanity> {
@@ -44,12 +44,11 @@ fn has_brokerage_tag(stock: &Stock) -> Option<Insanity> {
 }
 
 fn has_short_tag_if_needed(stock: &Stock) -> Option<Insanity> {
-    (stock.num < 0.0 && !stock.tags.contains(&"@short".to_string()))
-        .then(|| "has no @short tag".into())
+    (stock.num < 0.0 && stock.tags.is_disjoint(&SHORT_TAGS)).then(|| "has no @short tag".into())
 }
 
 fn no_short_if_not_needed(stock: &Stock) -> Option<Insanity> {
-    (stock.num > 0.0 && stock.tags.contains(&"@short".to_string()))
+    (stock.num > 0.0 && !stock.tags.is_disjoint(&SHORT_TAGS))
         .then(|| "shouldn't have @short tag".into())
 }
 
