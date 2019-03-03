@@ -3,10 +3,9 @@ use super::ntree::NTree;
 use crate::errors::*;
 
 pub struct BuildData {
-    // TODO: these fields should be private.
     pub tree: NTree<String>,
-    pub stack: Vec<(usize, ArenaIndex)>,
-    pub prefix_pattern: Option<String>,
+    stack: Vec<(usize, ArenaIndex)>,
+    prefix_pattern: Option<String>,
 }
 
 impl BuildData {
@@ -87,4 +86,44 @@ fn trim_prefix<'a>(s: &'a str, prefix: &Option<String>) -> &'a str {
         }
     }
     s
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_trim_with_length() {
+        assert_eq!(("foo", 0), trim_with_length("foo"));
+        assert_eq!(("foo", 3), trim_with_length("   foo"));
+        assert_eq!(("foo  ", 3), trim_with_length("   foo  "));
+        assert_eq!(("", 4), trim_with_length("   \n"));
+        assert_eq!(("+ foo", 5), trim_with_length("     + foo"));
+    }
+
+    #[test]
+    fn test_trim_prefix() {
+        // No prefix should return the string unchanged.
+        assert_eq!("quux", trim_prefix("quux", &None));
+        assert_eq!("  quux", trim_prefix("  quux", &None));
+        assert_eq!("- quux", trim_prefix("- quux", &None));
+        assert_eq!("  - quux", trim_prefix("  - quux", &None));
+
+        // A missing prefix should return the string unchanged.
+        assert_eq!("quux", trim_prefix("quux", &Some("-".to_string())));
+        assert_eq!("  quux", trim_prefix("  quux", &Some("-".to_string())));
+
+        // Remove the prefix and any spaces which remain.
+        assert_eq!("quux", trim_prefix("- quux", &Some("-".to_string())));
+        assert_eq!("quux", trim_prefix("-    quux", &Some("-".to_string())));
+
+        // The prefix must be at the very beginning of the string to have an effect.
+        assert_eq!("  - quux", trim_prefix("  - quux", &Some("-".to_string())));
+
+        // A mis-matched prefix should have no effect.
+        assert_eq!("quux", trim_prefix("quux", &Some("XXX".to_string())));
+        assert_eq!("  quux", trim_prefix("  quux", &Some("XXX".to_string())));
+        assert_eq!("- quux", trim_prefix("- quux", &Some("XXX".to_string())));
+        assert_eq!("  - quux", trim_prefix("  - quux", &Some("XXX".to_string())));
+    }
 }
