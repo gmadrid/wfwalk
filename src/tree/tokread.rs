@@ -20,6 +20,6 @@ where
             println!("LFD: {}", line);
             future::ok(bd)
         };
-        lines(stream).fold(build_data, ff);
+        lines(stream).fold(build_data, ff)
     })
 }
