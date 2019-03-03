@@ -1,6 +1,5 @@
-use std::ops::Index;
-
 use crate::errors::*;
+use std::ops::Index;
 
 enum ArenaCell<T> {
     Live(T),

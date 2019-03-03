@@ -1,10 +1,8 @@
-use std::collections::HashSet;
-use std::iter::FromIterator;
-
-use itertools::Itertools;
-
 use super::Stock;
 use crate::type_tools::{BoolTools, OptionTools, VecTools};
+use itertools::Itertools;
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
 lazy_static! {
     static ref BROKERAGE_TAGS: HashSet<String> =

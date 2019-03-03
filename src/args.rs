@@ -1,8 +1,6 @@
+use clap::{App, AppSettings, ArgMatches};
 use std::env;
 use std::ffi::OsString;
-
-use clap::{App, AppSettings, ArgMatches};
-
 use wfwalk::errors::*;
 
 pub struct Args<'a> {

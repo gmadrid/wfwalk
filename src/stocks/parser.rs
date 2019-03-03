@@ -15,9 +15,8 @@
 //
 // All whitespace is ignored except in StringWithSpaces.
 
-use std::collections::hash_set::HashSet;
-
 use crate::errors::*;
+use std::collections::hash_set::HashSet;
 
 fn parse_tag(str: &str) -> Result<&str> {
     let result = str.trim();
@@ -130,11 +129,10 @@ pub fn parse_stock(str: &str) -> Result<super::Stock> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::stocks::Stock;
     use crate::type_tools::VecTools;
     use std::iter::FromIterator;
-
-    use super::super::Stock;
-    use super::*;
 
     #[test]
     fn test_bad_stock() {

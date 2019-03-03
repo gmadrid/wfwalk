@@ -1,7 +1,6 @@
-use crate::errors::*;
-
 use super::arena::ArenaIndex;
 use super::ntree::NTree;
+use crate::errors::*;
 
 pub struct BuildData {
     // TODO: these fields should be private.
@@ -11,7 +10,10 @@ pub struct BuildData {
 }
 
 impl BuildData {
-    pub fn new<T>(prefix_pattern: Option<T>) -> BuildData where T: Into<String> {
+    pub fn new<T>(prefix_pattern: Option<T>) -> BuildData
+    where
+        T: Into<String>,
+    {
         BuildData {
             tree: NTree::new("".into()),
             stack: vec![],

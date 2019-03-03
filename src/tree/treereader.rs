@@ -1,26 +1,25 @@
-use std::io::BufRead;
-
 use super::arena::ArenaIndex;
 use super::ntree::NTree;
 use crate::errors::*;
-//
+use std::io::BufRead;
+
 pub fn read_tree<R: BufRead>(reader: R, prefix_pattern: Option<&str>) -> Result<NTree<String>> {
-//    let mut tree = NTree::new("ROOT".to_string());
-//
-//    let mut data = BuildData {
-//        tree: &mut tree,
-//        stack: Vec::default(),
-//        prefix_pattern,
-//    };
-//
-//    for line in reader.lines() {
-//        match line {
-//            Ok(txt) => data.add(txt.as_str())?,
-//            Err(e) => return Err(Error::with_chain(e, "Failed while reading input.")),
-//        };
-//    }
-//
-//    Ok(tree)
+    //    let mut tree = NTree::new("ROOT".to_string());
+    //
+    //    let mut data = BuildData {
+    //        tree: &mut tree,
+    //        stack: Vec::default(),
+    //        prefix_pattern,
+    //    };
+    //
+    //    for line in reader.lines() {
+    //        match line {
+    //            Ok(txt) => data.add(txt.as_str())?,
+    //            Err(e) => return Err(Error::with_chain(e, "Failed while reading input.")),
+    //        };
+    //    }
+    //
+    //    Ok(tree)
     Err("foobar".into())
 }
 //
