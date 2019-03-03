@@ -18,9 +18,9 @@ impl<'a> Args<'a> {
 }
 
 fn parse_from<'a, I, T>(itr: I) -> Result<ArgMatches<'a>>
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<OsString> + Clone,
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
 {
     App::new("wfwalk")
         .about("Pull stock information from my Workflowy export.")
@@ -28,7 +28,6 @@ fn parse_from<'a, I, T>(itr: I) -> Result<ArgMatches<'a>>
         .version(crate_version!())
         .setting(AppSettings::StrictUtf8)
         .setting(AppSettings::UnifiedHelpMessage)
-
         // Arguments
         .get_matches_from_safe(itr)
         .map_err(Error::from)

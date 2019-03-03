@@ -3,6 +3,8 @@ extern crate clap;
 
 use std::{thread, time};
 
+use tokio::prelude::*;
+
 use wfwalk::errors::*;
 use wfwalk::stocks::sanity_check;
 use wfwalk::stocks::Stocks;
@@ -12,25 +14,29 @@ mod args;
 use args::Args;
 
 fn real_main() -> Result<()> {
-        let args = Args::parse()?;
+    let args = Args::parse()?;
 
-    let stocks = Stocks::load()?;
-    for stock in stocks.stocks.values() {
-        let foo = sanity_check(&stock);
-        if foo.len() > 0 {
-            println!("\n{}", stock.symbol);
-            println!("{:?}", foo)
-        }
-    }
+    let foo = wfwalk::tree::read_tree_async(&"/Users/gmadrid/Dropbox/Apps/WorkFlowy/WorkFlowy (gmadrid@gmail.com).txt");
 
-    let client = alphavantage::Client::new("OVI13JKC3O31YFSR");
-    for stock in stocks.stocks.values() {
-        print!("{}: \n", stock.symbol);
-        let time_series = client.get_time_series_daily(&stock.symbol).unwrap();
-        let entry = time_series.entries.last().unwrap();
-        println!("{:?}", entry);
-        thread::sleep(time::Duration::from_millis(5000));
-    }
+    tokio::run(foo.map_err(|_| ()).map(|bd| println!("{}", bd.tree)));
+
+//    let stocks = Stocks::load()?;
+//    for stock in stocks.stocks.values() {
+//        let foo = sanity_check(&stock);
+//        if foo.len() > 0 {
+//            println!("\n{}", stock.symbol);
+//            println!("{:?}", foo)
+//        }
+//    }
+//
+//    let client = alphavantage::Client::new("OVI13JKC3O31YFSR");
+//    for stock in stocks.stocks.values() {
+//        print!("{}: \n", stock.symbol);
+//        let time_series = client.get_time_series_daily(&stock.symbol).unwrap();
+//        let entry = time_series.entries.last().unwrap();
+//        println!("{:?}", entry);
+//        thread::sleep(time::Duration::from_millis(5000));
+//    }
 
     Ok(())
 }
