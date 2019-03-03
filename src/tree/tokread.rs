@@ -11,12 +11,12 @@ where
     P: Into<PathBuf>,
 {
     File::open(path.into())
-        .map_err(|e| Error::from(e))
+        .map_err(|e| Error::with_chain(e, "failed to open file"))
         .and_then(|file| {
             let mut build_data = BuildData::new(Some("-".to_string()));
             let stream = BufReader::new(file);
             lines(stream)
-                .map_err(|e| Error::from(e))
+                .map_err(|e| Error::with_chain(e, "failed while reading lines"))
                 .fold(build_data, |mut bd, line| -> Result<BuildData> {
                     bd.add(&line)?;
                     println!("LFD: {}", line);
