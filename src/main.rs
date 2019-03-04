@@ -2,23 +2,23 @@
 extern crate clap;
 
 use args::Args;
-use std::{thread, time};
 use tokio::prelude::*;
 use wfwalk::errors::*;
-use wfwalk::stocks::sanity_check;
 use wfwalk::stocks::Stocks;
 
 mod args;
 
-const WF_FILE_NAME: &str =
-    "/Users/gmadrid/Dropbox/Apps/WorkFlowy/WorkFlowy (gmadrid@gmail.com).txt";
-
 fn real_main() -> Result<()> {
     let args = Args::parse()?;
 
-    let foo = wfwalk::tree::read_tree_async(WF_FILE_NAME);
+    let tree_future = wfwalk::tree::read_tree_async(args.file())
+        .and_then(|tree| {
+            let stocks = Stocks::load_from_tree(&tree)?;
+            Ok(())
+        })
+        .map_err(|e| eprintln!("{:?}", e));
 
-    tokio::run(foo.map_err(|_| ()).map(|bd| println!("{}", bd.tree)));
+    tokio::run(tree_future);
 
     //    let stocks = Stocks::load()?;
     //    for stock in stocks.stocks.values() {
