@@ -11,9 +11,20 @@ mod args;
 fn real_main() -> Result<()> {
     let args = Args::parse()?;
 
+    let do_sanity_check = args.do_sanity_check();
+
     let tree_future = wfwalk::tree::read_tree_async(args.file())
-        .and_then(|tree| {
+        .and_then(move |tree| {
             let stocks = Stocks::load_from_tree(&tree)?;
+            if do_sanity_check {
+                let insanities = stocks.sanity_check();
+                for (symbol, vec) in insanities {
+                    println!("{}", symbol);
+                    for insanity in vec {
+                        println!("  {}", insanity);
+                    }
+                }
+            }
             Ok(())
         })
         .map_err(|e| eprintln!("{:?}", e));

@@ -9,6 +9,7 @@ const FILE: &str = "FILE";
 const FILE_ENV: &str = "WFWALK_FILE";
 const FILE_DEFAULT: &str =
     "/Users/gmadrid/Dropbox/Apps/WorkFlowy/WorkFlowy (gmadrid@gmail.com).txt";
+const SANITY_CHECK: &str = "SANITY_CHECK";
 const TOKEN: &str = "TOKEN";
 const TOKEN_ENV: &str = "WFWALK_TOKEN";
 
@@ -31,6 +32,10 @@ impl<'a> Args<'a> {
     pub fn token(&self) -> Cow<str> {
         // unwrap() safe for required argument.
         self.matches.value_of_lossy(TOKEN).unwrap()
+    }
+
+    pub fn do_sanity_check(&self) -> bool {
+        self.matches.is_present(SANITY_CHECK)
     }
 }
 
@@ -55,8 +60,13 @@ where
                 .hide_default_value(true),
         )
         .arg(
+            Arg::with_name(SANITY_CHECK)
+                .help("check each stock subtree for inconsistencies and correct form")
+                .long("check")
+        )
+        .arg(
             Arg::with_name(TOKEN)
-                .help("The Alphavantage client token")
+                .help("the Alphavantage client token")
                 .short("t")
                 .long("token")
                 .required(true)
