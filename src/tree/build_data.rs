@@ -124,6 +124,9 @@ mod tests {
         assert_eq!("quux", trim_prefix("quux", &Some("XXX".to_string())));
         assert_eq!("  quux", trim_prefix("  quux", &Some("XXX".to_string())));
         assert_eq!("- quux", trim_prefix("- quux", &Some("XXX".to_string())));
-        assert_eq!("  - quux", trim_prefix("  - quux", &Some("XXX".to_string())));
+        assert_eq!(
+            "  - quux",
+            trim_prefix("  - quux", &Some("XXX".to_string()))
+        );
     }
 }

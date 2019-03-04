@@ -1,9 +1,9 @@
 use clap::{App, AppSettings, Arg, ArgMatches};
+use std::borrow::Cow;
 use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use wfwalk::errors::*;
-use std::borrow::Cow;
 
 const FILE: &str = "FILE";
 const FILE_ENV: &str = "WFWALK_FILE";
@@ -62,7 +62,7 @@ where
         .arg(
             Arg::with_name(SANITY_CHECK)
                 .help("check each stock subtree for inconsistencies and correct form")
-                .long("check")
+                .long("check"),
         )
         .arg(
             Arg::with_name(TOKEN)
@@ -71,7 +71,7 @@ where
                 .long("token")
                 .required(true)
                 .require_equals(true)
-                .env(TOKEN_ENV)
+                .env(TOKEN_ENV),
         )
         .get_matches_from_safe(itr)
         .map_err(Error::from)

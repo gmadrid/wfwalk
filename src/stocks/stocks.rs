@@ -1,5 +1,6 @@
 use super::parser;
 use crate::errors::*;
+use crate::stocks::sanity::sanity_check;
 use crate::tree::read_tree;
 use crate::tree::ArenaIndex;
 use crate::tree::NTree;
@@ -7,8 +8,6 @@ use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 use std::fs::File;
 use std::io::BufReader;
-use crate::stocks::sanity::sanity_check;
-use crate::type_tools::BoolTools;
 
 type StockTree = NTree<String>;
 
@@ -47,7 +46,7 @@ impl Stocks {
     }
 
     pub fn sanity_check(&self) -> HashMap<String, Vec<String>> {
-        self.stocks.values().fold(HashMap::<String, Vec<String>>::new(), |mut acc, stock| {
+        self.stocks.values().fold(HashMap::new(), |mut acc, stock| {
             let sanity = sanity_check(stock);
             if !sanity.is_empty() {
                 acc.insert(stock.symbol.clone(), sanity);
