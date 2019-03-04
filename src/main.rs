@@ -29,7 +29,7 @@ fn real_main() -> Result<()> {
     //        }
     //    }
     //
-    //    let client = alphavantage::Client::new("OVI13JKC3O31YFSR");
+    //    let client = alphavantage::Client::new("CLIENT TOKEN");
     //    for stock in stocks.stocks.values() {
     //        print!("{}: \n", stock.symbol);
     //        let time_series = client.get_time_series_daily(&stock.symbol).unwrap();

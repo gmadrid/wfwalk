@@ -3,11 +3,14 @@ use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use wfwalk::errors::*;
+use std::borrow::Cow;
 
 const FILE: &str = "FILE";
 const FILE_ENV: &str = "WFWALK_FILE";
 const FILE_DEFAULT: &str =
     "/Users/gmadrid/Dropbox/Apps/WorkFlowy/WorkFlowy (gmadrid@gmail.com).txt";
+const TOKEN: &str = "TOKEN";
+const TOKEN_ENV: &str = "WFWALK_TOKEN";
 
 pub struct Args<'a> {
     matches: ArgMatches<'a>,
@@ -21,7 +24,13 @@ impl<'a> Args<'a> {
     }
 
     pub fn file(&self) -> PathBuf {
+        // unwrap() safe for argument with default value.
         self.matches.value_of_os(FILE).unwrap().into()
+    }
+
+    pub fn token(&self) -> Cow<str> {
+        // unwrap() safe for required argument.
+        self.matches.value_of_lossy(TOKEN).unwrap()
     }
 }
 
@@ -44,6 +53,14 @@ where
                 .env(FILE_ENV)
                 .default_value(FILE_DEFAULT)
                 .hide_default_value(true),
+        )
+        .arg(
+            Arg::with_name(TOKEN)
+                .help("The Alphavantage client token")
+                .short("t")
+                .long("token")
+                .required(true)
+                .env(TOKEN_ENV)
         )
         .get_matches_from_safe(itr)
         .map_err(Error::from)
