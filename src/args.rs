@@ -70,6 +70,7 @@ where
                 .short("t")
                 .long("token")
                 .required(true)
+                .require_equals(true)
                 .env(TOKEN_ENV)
         )
         .get_matches_from_safe(itr)
