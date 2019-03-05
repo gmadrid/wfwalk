@@ -15,9 +15,8 @@
 //
 // All whitespace is ignored except in StringWithSpaces.
 
-use std::collections::hash_set::HashSet;
-
 use crate::errors::*;
+use std::collections::hash_set::HashSet;
 
 fn parse_tag(str: &str) -> Result<&str> {
     let result = str.trim();
@@ -131,11 +130,10 @@ pub fn parse_stock(str: &str) -> Result<super::Stock> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::stocks::Stock;
     use crate::type_tools::VecTools;
     use std::iter::FromIterator;
-
-    use super::super::Stock;
-    use super::*;
 
     #[test]
     fn test_bad_stock() {
@@ -149,6 +147,7 @@ mod tests {
                         .to_strings()
                         .into_iter()
                 ),
+                lots: vec![],
             },
             dbg!(parse_stock("CL - -33 - @etrade @longshort @short").unwrap())
         );
@@ -162,6 +161,7 @@ mod tests {
                 name: Some("Apple Computer".into()),
                 num: 3.0,
                 tags: HashSet::from_iter(vec!["@foo", "#bar"].to_strings().into_iter()),
+                lots: vec![],
             },
             parse_stock("AAPL - Apple Computer - 3 - @foo #bar").unwrap()
         );
@@ -175,6 +175,7 @@ mod tests {
                 name: None,
                 num: 3.0,
                 tags: HashSet::from_iter(vec!["@foo".to_string()].into_iter()),
+                lots: vec![],
             },
             parse_stock("AAPL - 3 - @foo").unwrap()
         );
@@ -186,6 +187,7 @@ mod tests {
                 name: Some("Apple Computer".to_owned()),
                 num: 3.0,
                 tags: HashSet::new(),
+                lots: vec![],
             },
             parse_stock("AAPL - Apple Computer - 3").unwrap()
         );
@@ -197,6 +199,7 @@ mod tests {
                 name: None,
                 num: 3.0,
                 tags: HashSet::new(),
+                lots: vec![],
             },
             parse_stock("AAPL - 3").unwrap()
         );

@@ -1,7 +1,6 @@
-use std::collections::VecDeque;
-
 use super::arena::{Arena, ArenaIndex};
 use crate::errors::*;
+use std::collections::VecDeque;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
