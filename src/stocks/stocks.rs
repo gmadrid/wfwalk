@@ -23,6 +23,12 @@ pub struct Stock {
     pub name: Option<String>,
     pub num: f32,
     pub tags: HashSet<String>,
+    pub lots: Vec<Lot>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Lot {
+
 }
 
 impl Stocks {

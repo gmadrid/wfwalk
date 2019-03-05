@@ -12,7 +12,7 @@ mod args;
 use args::Args;
 
 fn real_main() -> Result<()> {
-        let args = Args::parse()?;
+    let args = Args::parse()?;
 
     let stocks = Stocks::load()?;
     for stock in stocks.stocks.values() {
@@ -29,7 +29,7 @@ fn real_main() -> Result<()> {
         let time_series = client.get_time_series_daily(&stock.symbol).unwrap();
         let entry = time_series.entries.last().unwrap();
         println!("{:?}", entry);
-        thread::sleep(time::Duration::from_millis(5000));
+        thread::sleep(time::Duration::from_millis(13000));
     }
 
     Ok(())
