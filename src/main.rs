@@ -5,10 +5,14 @@ use args::Args;
 use tokio::prelude::*;
 use wfwalk::errors::*;
 use wfwalk::stocks::Stocks;
+use wfwalk::ratelimiter::Limiter;
+use tokio::fs::File;
 
 mod args;
 
 fn real_main() -> Result<()> {
+    env_logger::init();
+
     let args = Args::parse()?;
 
     let do_sanity_check = args.do_sanity_check();
@@ -25,6 +29,11 @@ fn real_main() -> Result<()> {
                     }
                 }
             }
+            Ok(stocks)
+        })
+        .and_then(|stocks| {
+            let mut limiter = Limiter::new();
+            limiter.add_task(File::open("/tmp/quux.tokio").map(|_| ()).map_err(|_| ()));
             Ok(())
         })
         .map_err(|e| eprintln!("{:?}", e));
