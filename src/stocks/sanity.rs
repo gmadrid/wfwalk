@@ -70,8 +70,9 @@ mod tests {
         Stock {
             symbol: symbol.to_string(),
             name: name.map(|s| s.to_string()),
-            num: num,
+            num,
             tags: HashSet::from_iter(tags.to_strings().into_iter()),
+            lots: vec![],
         }
     }
 

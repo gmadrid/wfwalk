@@ -11,6 +11,10 @@ use std::time::Duration;
 
 mod args;
 
+fn start_rate_limiter() -> impl Future<Item=Limiter, Error=Error> {
+    future::lazy(|| future::ok(Limiter::new()))
+}
+
 fn real_main() -> Result<()> {
     env_logger::init();
 
@@ -18,28 +22,35 @@ fn real_main() -> Result<()> {
 
     let do_sanity_check = args.do_sanity_check();
 
-    let tree_future = wfwalk::tree::read_tree_async(args.file())
-        .and_then(move |tree| {
-            let stocks = Stocks::load_from_tree(&tree)?;
-            if do_sanity_check {
-                let insanities = stocks.sanity_check();
-                for (symbol, vec) in insanities {
-                    println!("{}", symbol);
-                    for insanity in vec {
-                        println!("  {}", insanity);
-                    }
-                }
-            }
-            Ok(stocks)
-        })
-        .and_then(|stocks| {
-            let mut limiter = Limiter::new();
-            limiter.add_task(File::open("/tmp/quux.tokio").map(|_| ()).map_err(|_| ()));
-            Ok(())
-        })
-        .map_err(|e| eprintln!("{:?}", e));
+    let future_chain = start_rate_limiter()
+        .map(|_| ())
+        .map_err(|e| eprintln!("{}", e));
 
-    tokio::run(tree_future);
+    tokio::run(future_chain);
+    //tokio::run(future::lazy(|| future::ok(Limiter::new()).map(|_| ())));
+
+//    let tree_future = wfwalk::tree::read_tree_async(args.file())
+//        .and_then(move |tree| {
+//            let stocks = Stocks::load_from_tree(&tree)?;
+//            if do_sanity_check {
+//                let insanities = stocks.sanity_check();
+//                for (symbol, vec) in insanities {
+//                    println!("{}", symbol);
+//                    for insanity in vec {
+//                        println!("  {}", insanity);
+//                    }
+//                }
+//            }
+//            Ok(stocks)
+//        })
+//        .and_then(|stocks| {
+//            let mut limiter = Limiter::new();
+//            limiter.add_task(File::open("/tmp/quux.tokio").map(|_| ()).map_err(|_| ()));
+//            Ok(())
+//        })
+//        .map_err(|e| eprintln!("{:?}", e));
+//
+//    tokio::run(tree_future);
 
     //    let stocks = Stocks::load()?;
     //    for stock in stocks.stocks.values() {
