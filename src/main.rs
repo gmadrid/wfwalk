@@ -1,56 +1,67 @@
 #[macro_use]
 extern crate clap;
 
-use args::Args;
-use tokio::prelude::*;
-use wfwalk::errors::*;
-use wfwalk::stocks::Stocks;
-use wfwalk::ratelimiter::Limiter;
-use tokio::fs::File;
+use std::fmt::Debug;
 use std::time::Duration;
+
+use tokio::fs::File;
+use tokio::prelude::*;
+
+use args::Args;
+use wfwalk::errors::*;
+use wfwalk::ratelimiter::Limiter;
+use wfwalk::stocks::Stocks;
+use wfwalk::tokio_tools::erase_types;
 
 mod args;
 
-fn start_rate_limiter() -> impl Future<Item=Limiter, Error=Error> {
-    future::lazy(|| future::ok(Limiter::new()))
+fn future_main() -> impl Future<Item = (), Error = Error> {
+    setup().and_then(run).and_then(cleanup)
+}
+
+fn setup() -> impl Future<Item = Limiter, Error = Error> {
+    start_rate_limiter()
+}
+
+fn start_rate_limiter() -> impl Future<Item = Limiter, Error = Error> {
+    future::ok(Limiter::new())
+}
+
+fn run(mut limiter: Limiter) -> impl Future<Item = (), Error = Error> {
+    future::result(limiter.add_task(future::ok(())))
+}
+
+fn cleanup(_: ()) -> impl Future<Item = (), Error = Error> {
+    future::ok(())
 }
 
 fn real_main() -> Result<()> {
-    env_logger::init();
-
     let args = Args::parse()?;
 
-    let do_sanity_check = args.do_sanity_check();
+    tokio::run(futures::lazy(|| erase_types(future_main())));
 
-    let future_chain = start_rate_limiter()
-        .map(|_| ())
-        .map_err(|e| eprintln!("{}", e));
-
-    tokio::run(future_chain);
-    //tokio::run(future::lazy(|| future::ok(Limiter::new()).map(|_| ())));
-
-//    let tree_future = wfwalk::tree::read_tree_async(args.file())
-//        .and_then(move |tree| {
-//            let stocks = Stocks::load_from_tree(&tree)?;
-//            if do_sanity_check {
-//                let insanities = stocks.sanity_check();
-//                for (symbol, vec) in insanities {
-//                    println!("{}", symbol);
-//                    for insanity in vec {
-//                        println!("  {}", insanity);
-//                    }
-//                }
-//            }
-//            Ok(stocks)
-//        })
-//        .and_then(|stocks| {
-//            let mut limiter = Limiter::new();
-//            limiter.add_task(File::open("/tmp/quux.tokio").map(|_| ()).map_err(|_| ()));
-//            Ok(())
-//        })
-//        .map_err(|e| eprintln!("{:?}", e));
-//
-//    tokio::run(tree_future);
+    //    let tree_future = wfwalk::tree::read_tree_async(args.file())
+    //        .and_then(move |tree| {
+    //            let stocks = Stocks::load_from_tree(&tree)?;
+    //            if do_sanity_check {
+    //                let insanities = stocks.sanity_check();
+    //                for (symbol, vec) in insanities {
+    //                    println!("{}", symbol);
+    //                    for insanity in vec {
+    //                        println!("  {}", insanity);
+    //                    }
+    //                }
+    //            }
+    //            Ok(stocks)
+    //        })
+    //        .and_then(|stocks| {
+    //            let mut limiter = Limiter::new();
+    //            limiter.add_task(File::open("/tmp/quux.tokio").map(|_| ()).map_err(|_| ()));
+    //            Ok(())
+    //        })
+    //        .map_err(|e| eprintln!("{:?}", e));
+    //
+    //    tokio::run(tree_future);
 
     //    let stocks = Stocks::load()?;
     //    for stock in stocks.stocks.values() {
@@ -74,6 +85,8 @@ fn real_main() -> Result<()> {
 }
 
 fn main() {
+    env_logger::init();
+
     match real_main() {
         Ok(_) => (),
         Err(err) => {

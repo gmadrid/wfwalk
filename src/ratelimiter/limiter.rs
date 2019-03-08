@@ -1,73 +1,89 @@
-use tokio::prelude::Future;
+use tokio::prelude::future;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use tokio::timer::DelayQueue;
+//use tokio::timer::DelayQueue;
+use crate::errors::*;
+use crate::tokio_tools;
+use std::fmt::Debug;
+use std::fmt::Formatter;
+use tokio::prelude::future::Future;
 use tokio::prelude::Async;
 use tokio::prelude::Stream;
-use tokio::fs::File;
-use tokio::prelude::future;
-use std::time::Duration;
 
-type Task = dyn Future<Item = (), Error = ()> + Send;
+type Task = dyn future::Future<Item = (), Error = ()> + Send;
 
 enum Request {
     AddTask(Box<Task>),
-    Quit
+    Quit,
+}
+
+impl Debug for Request {
+    fn fmt(&self, f: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            Request::AddTask(_) => write!(f, "AddTask"),
+            Request::Quit => write!(f, "Quit"),
+        }
+    }
 }
 
 pub struct Limiter {
     sender: UnboundedSender<Request>,
 }
 
-struct Runner  {
-    queue: DelayQueue<Box<Task>>,
+struct Runner {
     receiver: UnboundedReceiver<Request>,
 }
 
+//fn map_send_error<T>(result: std::err::Result<T,UnboundTrySendError>) -> Result<T> {
+//    let e: Option<::std::io::Error> = None;
+//}
+//
 impl Limiter {
     pub fn new() -> Limiter {
         let (sender, receiver) = unbounded_channel();
 
-        let mut runner = Runner {
-            queue: DelayQueue::new(),
-            receiver,
-        };
-        runner.queue.insert(Box::new(future::ok(())), Duration::new(60 * 50 * 24, 0));
-        tokio::spawn(runner);
+        let runner = Runner { receiver };
+        tokio::spawn(tokio_tools::erase_types(runner));
 
-        Limiter { sender }
+        Limiter {
+            sender: sender.clone(),
+        }
     }
 
     // TODO: error handling
-    pub fn add_task<T>(&mut self, task: T) where T: Future<Item = (), Error = ()> + Send + 'static {
+    pub fn add_task<T>(&mut self, task: T) -> Result<()>
+    where
+        T: Future<Item = (), Error = ()> + Send + 'static,
+    {
         println!("adding task");
-        // TODO: get this unwrap out of here.
-        self.sender.try_send(Request::AddTask(Box::new(task)));
+        let req = Request::AddTask(Box::new(task));
+        self.sender.try_send(req).chain_err(|| "Error in add_task")
     }
 
     // TODO: error handling
-    pub fn quit(&mut self) {
-        self.sender.try_send(Request::Quit);
+    pub fn quit(&mut self) -> Result<()> {
+        self.sender
+            .try_send(Request::Quit)
+            .chain_err(|| "Error in quit()")
     }
 }
 
 impl Future for Runner {
     type Item = ();
-    type Error = ();
+    type Error = Error;
 
-    fn poll(&mut self) -> Result<Async<Self::Item>, Self::Error> {
+    fn poll(&mut self) -> Result<Async<Self::Item>> {
         loop {
             // TODO: deal with this error.
-            println!("Polling");
-            let request = try_ready!(self.receiver.poll().map_err(|_| ()));
+            //println!("Polling");
+            let request = try_ready!(self.receiver.poll()); //.map_err(|_| "TODO: FIX THIS".into()));
 
-            println!("got a thing");
+            //println!("got a thing: {:?}", request);
             match request {
-                Some(Request::AddTask(t)) => {
-                    println!("adding a task");
-                    self.queue.insert(t, Duration::new(5, 0));
-                },
+                Some(Request::AddTask(_t)) => {
+                    info!("Adding a task");
+                }
                 Some(Request::Quit) => break,
-                None => println!("Stream done"),
+                None => break,
             };
         }
         Ok(Async::Ready(()))

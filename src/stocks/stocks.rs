@@ -26,9 +26,7 @@ pub struct Stock {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Lot {
-
-}
+pub struct Lot {}
 
 impl Stocks {
     pub fn load_from_file() -> Result<Stocks> {
