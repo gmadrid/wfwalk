@@ -1,34 +1,64 @@
 #[macro_use]
 extern crate clap;
 
-use std::fmt::Debug;
-use std::time::Duration;
+use std::sync::Arc;
 
-use tokio::fs::File;
 use tokio::prelude::*;
 
-use args::Args;
+use futures::future::ok;
 use wfwalk::errors::*;
 use wfwalk::ratelimiter::Limiter;
 use wfwalk::stocks::Stocks;
 use wfwalk::tokio_tools::erase_types;
+use std::time::Duration;
+use std::time::Instant;
 
 mod args;
 
-fn future_main() -> impl Future<Item = (), Error = Error> {
-    setup().and_then(run).and_then(cleanup)
+type Config = Arc<args::Config>;
+
+fn future_main(args: Config) -> impl Future<Item = (), Error = Error> {
+    setup(args.clone()).and_then(run).and_then(cleanup)
 }
 
-fn setup() -> impl Future<Item = Limiter, Error = Error> {
-    start_rate_limiter()
+fn setup(config: Config) -> impl Future<Item = (Config, Limiter, Stocks), Error = Error> {
+    let limiter = start_rate_limiter();
+    let stocks = load_stock_info(config.clone());
+    limiter
+        .join(stocks)
+        .map(|(limiter, stocks)| (config, limiter, stocks))
 }
 
 fn start_rate_limiter() -> impl Future<Item = Limiter, Error = Error> {
     future::ok(Limiter::new())
 }
 
-fn run(mut limiter: Limiter) -> impl Future<Item = (), Error = Error> {
-    future::result(limiter.add_task(future::ok(())))
+fn load_stock_info(config: Config) -> impl Future<Item = Stocks, Error = Error> {
+    wfwalk::tree::read_tree_async(config.filepath.clone())
+        .and_then(|tree| Stocks::load_from_tree(&tree))
+}
+
+fn make_a_task(num: u8) -> impl Future<Item = (), Error = ()> {
+    ok(Instant::now())
+        .map(move |i| println!("Task: {}/{}", num, i.elapsed().as_millis()))
+}
+
+fn run(params: (Config, Limiter, Stocks)) -> impl Future<Item = (), Error = Error> {
+    let (config, mut limiter, stocks) = params;
+
+    limiter.add_task(make_a_task(1));
+    limiter.add_task(make_a_task(2));
+    limiter.add_task(make_a_task(3));
+    limiter.add_task(make_a_task(4));
+    limiter.add_task(make_a_task(5));
+    limiter.add_task(make_a_task(6));
+    limiter.add_task(make_a_task(7));
+
+    loop {}
+
+    limiter.add_task(make_a_task(8));
+
+    ok(())
 }
 
 fn cleanup(_: ()) -> impl Future<Item = (), Error = Error> {
@@ -36,50 +66,9 @@ fn cleanup(_: ()) -> impl Future<Item = (), Error = Error> {
 }
 
 fn real_main() -> Result<()> {
-    let args = Args::parse()?;
+    let config = Arc::new(args::Config::new()?);
 
-    tokio::run(futures::lazy(|| erase_types(future_main())));
-
-    //    let tree_future = wfwalk::tree::read_tree_async(args.file())
-    //        .and_then(move |tree| {
-    //            let stocks = Stocks::load_from_tree(&tree)?;
-    //            if do_sanity_check {
-    //                let insanities = stocks.sanity_check();
-    //                for (symbol, vec) in insanities {
-    //                    println!("{}", symbol);
-    //                    for insanity in vec {
-    //                        println!("  {}", insanity);
-    //                    }
-    //                }
-    //            }
-    //            Ok(stocks)
-    //        })
-    //        .and_then(|stocks| {
-    //            let mut limiter = Limiter::new();
-    //            limiter.add_task(File::open("/tmp/quux.tokio").map(|_| ()).map_err(|_| ()));
-    //            Ok(())
-    //        })
-    //        .map_err(|e| eprintln!("{:?}", e));
-    //
-    //    tokio::run(tree_future);
-
-    //    let stocks = Stocks::load()?;
-    //    for stock in stocks.stocks.values() {
-    //        let foo = sanity_check(&stock);
-    //        if foo.len() > 0 {
-    //            println!("\n{}", stock.symbol);
-    //            println!("{:?}", foo)
-    //        }
-    //    }
-    //
-    //    let client = alphavantage::Client::new("CLIENT TOKEN");
-    //    for stock in stocks.stocks.values() {
-    //        print!("{}: \n", stock.symbol);
-    //        let time_series = client.get_time_series_daily(&stock.symbol).unwrap();
-    //        let entry = time_series.entries.last().unwrap();
-    //        println!("{:?}", entry);
-    //        thread::sleep(time::Duration::from_millis(5000));
-    //    }
+    tokio::run(futures::lazy(move || erase_types(future_main(config))));
 
     Ok(())
 }

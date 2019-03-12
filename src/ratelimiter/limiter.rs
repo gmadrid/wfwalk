@@ -1,19 +1,39 @@
-use tokio::prelude::future;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-//use tokio::timer::DelayQueue;
-use crate::errors::*;
-use crate::tokio_tools;
 use std::fmt::Debug;
 use std::fmt::Formatter;
-use tokio::prelude::future::Future;
-use tokio::prelude::Async;
-use tokio::prelude::Stream;
+use std::time::Duration;
+use std::time::Instant;
 
-type Task = dyn future::Future<Item = (), Error = ()> + Send;
+use tokio::prelude::{future, Async, Future, Stream};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::timer::delay_queue::{DelayQueue, Expired};
+
+use crate::errors::*;
+use crate::tokio_tools;
+use crate::ratelimiter::limiter::PollState::{PollingQueue, PollingReceiver};
+
+type Task = dyn Future<Item = (), Error = ()> + Send;
 
 enum Request {
     AddTask(Box<Task>),
     Quit,
+}
+
+// A wrapper for the different results we may receive while polling.
+enum PollResult {
+    Request(Request),
+    Task(Expired<Box<Task>>),
+}
+
+impl From<Request> for PollResult {
+    fn from(r: Request) -> Self {
+        PollResult::Request(r)
+    }
+}
+
+impl From<Expired<Box<Task>>> for PollResult {
+    fn from(t: Expired<Box<Task>>) -> Self {
+        PollResult::Task(t)
+    }
 }
 
 impl Debug for Request {
@@ -30,18 +50,27 @@ pub struct Limiter {
 }
 
 struct Runner {
-    receiver: UnboundedReceiver<Request>,
+    receiver: Option<UnboundedReceiver<Request>>,
+    queue: DelayQueue<Box<Task>>,
+
+    times: Vec<Instant>,
+    num_requests: u32,
+    duration: Duration,
 }
 
-//fn map_send_error<T>(result: std::err::Result<T,UnboundTrySendError>) -> Result<T> {
-//    let e: Option<::std::io::Error> = None;
-//}
-//
 impl Limiter {
     pub fn new() -> Limiter {
         let (sender, receiver) = unbounded_channel();
 
-        let runner = Runner { receiver };
+        let runner = Runner {
+            receiver,
+            queue: DelayQueue::new(),
+            times: Vec::new(),
+
+            // 2 reqs/5 secs
+            num_requests: 2,
+            duration: Duration::from_secs(5),
+        };
         tokio::spawn(tokio_tools::erase_types(runner));
 
         Limiter {
@@ -67,24 +96,93 @@ impl Limiter {
     }
 }
 
+fn normalize<'a, S, T, E>(s: &'a mut S) -> impl Stream<Item = PollResult, Error=Error> + 'a
+    where S: Stream<Item = T, Error = E>,
+    E: Into<Error>,
+    T: Into<PollResult>,
+{
+    s.map(|t| t.into()).map_err(|e| e.into())
+}
+
+enum PollState {
+    PollingQueue,
+    PollingReceiver,
+}
+
 impl Future for Runner {
     type Item = ();
     type Error = Error;
 
     fn poll(&mut self) -> Result<Async<Self::Item>> {
+        use PollState::*;
+        // TODO: maybe this state should be in the Runner.
+        let mut state = PollingQueue;
         loop {
-            // TODO: deal with this error.
-            //println!("Polling");
-            let request = try_ready!(self.receiver.poll()); //.map_err(|_| "TODO: FIX THIS".into()));
-
-            //println!("got a thing: {:?}", request);
-            match request {
-                Some(Request::AddTask(_t)) => {
-                    info!("Adding a task");
+            match state {
+                PollingQueue => {
+                    if (self.receiver.is_some()) {
+                        state = PollingReceiver;
+                    }
+                    match self.queue.poll() {
+                        Err(e) => return Err(e.into()),
+                        Ok(Async::NotReady) => {
+                            // TODO: have to handle this NOW!
+                        }
+                        Ok(Async::Ready(None)) => { println!("GOTTA HANDLE THIS TOO"); }
+                        Ok(Async::Ready(Some(task))) => {
+                            println!("GOT A TASK!!!!!!!!!!");
+                        }
+                    }
                 }
-                Some(Request::Quit) => break,
-                None => break,
-            };
+
+                PollingReceiver => {
+                        state = PollingQueue;
+                    match self.receiver.poll() {
+                        Err(e) => return Err(e.into()),
+                        Ok(Async::NotReady) => {
+                            // TODO: Do something here to make the bouncing happen.
+                            return Ok(Async::NotReady)
+                        }
+                        Ok(Async::Ready(req)) => {
+                            // TODO: Do something with None value here.
+                            match req {
+                                None => { println!("GOTTA HANDLE THIS"); break; }
+                                Some(Request::Quit) => {
+                                    println!("QUITTING");
+                                    break;
+                                }
+                                Some(Request::AddTask(task)) => {
+                                    println!("ADDING TASK");
+                                    self.queue.insert_at(task, Instant::now() + Duration::from_secs(1));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+//            let q = normalize(self.queue.by_ref());
+//            let r = normalize(self.receiver.by_ref());
+//            let mut sel = q.select(r);
+//
+//            let polled = try_ready!(sel.poll());
+//            match polled {
+//                None => {
+//                    println!("End of streams");
+//                    break;
+//                },
+//                Some(PollResult::Request(Request::Quit)) => {
+//                    println!("Quitting");
+//                    break;
+//                },
+//                Some(PollResult::Request(Request::AddTask(t))) => {
+//                    println!("Adding Task");
+//                    self.queue.insert_at(t, Instant::now() + Duration::from_secs(1));
+//                },
+//                Some(PollResult::Task(expired)) => {
+//                    println!("EXPIRED");
+//                }
+//            }
         }
         Ok(Async::Ready(()))
     }

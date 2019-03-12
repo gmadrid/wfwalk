@@ -31,6 +31,8 @@ pub mod errors {
             Io(::std::io::Error);
             ParseFloat(::std::num::ParseFloatError);
             RecvError(tokio::sync::mpsc::error::UnboundedRecvError);
+            TokioTimer(tokio::timer::Error);
+//            <tokio_timer::error::Error
         }
     }
 }

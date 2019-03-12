@@ -13,28 +13,49 @@ const SANITY_CHECK: &str = "SANITY_CHECK";
 const TOKEN: &str = "TOKEN";
 const TOKEN_ENV: &str = "WFWALK_TOKEN";
 
-pub struct Args<'a> {
+// Configuration must be completely owned so that it can be passed around between threads.
+pub struct Config {
+    pub do_sanity_check: bool,
+    pub filepath: PathBuf,
+}
+
+impl Config {
+    pub fn new() -> Result<Config> {
+        Ok(Args::parse()?.into())
+    }
+}
+
+impl<'a> From<Args<'a>> for Config {
+    fn from(args: Args) -> Self {
+        Config {
+            do_sanity_check: args.do_sanity_check(),
+            filepath: args.file(),
+        }
+    }
+}
+
+struct Args<'a> {
     matches: ArgMatches<'a>,
 }
 
 impl<'a> Args<'a> {
-    pub fn parse() -> Result<Args<'a>> {
+    fn parse() -> Result<Args<'a>> {
         Ok(Args {
             matches: parse_from(env::args_os())?,
         })
     }
 
-    pub fn file(&self) -> PathBuf {
+    fn file(&self) -> PathBuf {
         // unwrap() safe for argument with default value.
         self.matches.value_of_os(FILE).unwrap().into()
     }
 
-    pub fn token(&self) -> Cow<str> {
+    fn token(&self) -> Cow<str> {
         // unwrap() safe for required argument.
         self.matches.value_of_lossy(TOKEN).unwrap()
     }
 
-    pub fn do_sanity_check(&self) -> bool {
+    fn do_sanity_check(&self) -> bool {
         self.matches.is_present(SANITY_CHECK)
     }
 }
