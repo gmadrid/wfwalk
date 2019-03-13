@@ -30,7 +30,7 @@ fn setup(config: Config) -> impl Future<Item = (Config, Limiter, Stocks), Error 
 }
 
 fn start_rate_limiter() -> impl Future<Item = Limiter, Error = Error> {
-    future::ok(Limiter::new())
+    future::ok(Limiter::new(5, Duration::from_secs(60)))
 }
 
 fn load_stock_info(config: Config) -> impl Future<Item = Stocks, Error = Error> {

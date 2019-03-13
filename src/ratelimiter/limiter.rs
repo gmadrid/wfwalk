@@ -10,6 +10,7 @@ use tokio::timer::delay_queue::{DelayQueue, Expired};
 
 use crate::errors::*;
 use crate::tokio_tools;
+use itertools::{iterate, Itertools};
 
 type Task = dyn Future<Item = (), Error = ()> + Send;
 type BoxedTask = Box<Task>;
@@ -66,7 +67,7 @@ struct Runner {
 }
 
 impl Limiter {
-    pub fn new() -> Limiter {
+    pub fn new(num_requests: usize, duration: Duration) -> Limiter {
         let (sender, receiver) = unbounded_channel();
 
         let runner = Runner {
@@ -75,8 +76,8 @@ impl Limiter {
             run_instants: VecDeque::new(),
 
             // 2 reqs/5 secs
-            num_requests: 2,
-            duration: Duration::from_secs(5),
+            num_requests,
+            duration,
         };
         tokio::spawn(tokio_tools::erase_types(runner));
 
@@ -111,8 +112,15 @@ where
 }
 
 impl Runner {
-    fn try_to_run_task(&mut self) {
-        println!("TRYING TO RUN TASK");
+    fn compute_next_task_time(&mut self) -> Instant {
+        let cutoff = Instant::now() - self.duration;
+        self.run_instants = self.run_instants.iter().map(|i| *i).filter(|i| *i > cutoff).collect();
+        if self.run_instants.len() < self.num_requests {
+            Instant::now()
+        } else {
+            let index = self.run_instants.len() - self.num_requests;
+            self.run_instants[index] + self.duration
+        }
     }
 }
 
@@ -143,7 +151,9 @@ impl Future for Runner {
                 }
                 Some(Polled::Request(Request::AddTask(t))) => {
                     println!("GOT A TASK");
-                    self.queue.insert_at(t, Instant::now());
+                    let new_instant = self.compute_next_task_time();
+                    self.run_instants.push_back(new_instant);
+                    self.queue.insert_at(t, new_instant);
                 }
             }
         }
