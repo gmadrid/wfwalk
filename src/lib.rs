@@ -19,22 +19,22 @@ extern crate futures;
 pub mod errors {
     // TODO: figure out a non-deprecated way forward for error handling.
     error_chain! {
-        errors {
-            BadParse(nonterminal: &'static str, desc: &'static str, _text: String) {
-                description("a parse error"),
-                display("Parse error: {:1} {:0}", desc, nonterminal),
+            errors {
+                BadParse(nonterminal: &'static str, desc: &'static str, _text: String) {
+                    description("a parse error"),
+                    display("Parse error: {:1} {:0}", desc, nonterminal),
+                }
+            }
+
+            foreign_links{
+                Clap(clap::Error);
+                Io(::std::io::Error);
+                ParseFloat(::std::num::ParseFloatError);
+                RecvError(tokio::sync::mpsc::error::UnboundedRecvError);
+                TokioTimer(tokio::timer::Error);
+    //            <tokio_timer::error::Error
             }
         }
-
-        foreign_links{
-            Clap(clap::Error);
-            Io(::std::io::Error);
-            ParseFloat(::std::num::ParseFloatError);
-            RecvError(tokio::sync::mpsc::error::UnboundedRecvError);
-            TokioTimer(tokio::timer::Error);
-//            <tokio_timer::error::Error
-        }
-    }
 }
 
 pub mod ratelimiter;

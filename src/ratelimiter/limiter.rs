@@ -114,7 +114,12 @@ where
 impl Runner {
     fn compute_next_task_time(&mut self) -> Instant {
         let cutoff = Instant::now() - self.duration;
-        self.run_instants = self.run_instants.iter().map(|i| *i).filter(|i| *i > cutoff).collect();
+        self.run_instants = self
+            .run_instants
+            .iter()
+            .map(|i| *i)
+            .filter(|i| *i > cutoff)
+            .collect();
         if self.run_instants.len() < self.num_requests {
             Instant::now()
         } else {
