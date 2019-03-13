@@ -1,3 +1,4 @@
+use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::time::Duration;
@@ -9,9 +10,9 @@ use tokio::timer::delay_queue::{DelayQueue, Expired};
 
 use crate::errors::*;
 use crate::tokio_tools;
-use std::collections::{HashMap, VecDeque};
 
 type Task = dyn Future<Item = (), Error = ()> + Send;
+type BoxedTask = Box<Task>;
 
 enum Request {
     AddTask(Box<Task>),
@@ -21,12 +22,18 @@ enum Request {
 // A wrapper for the different results we may receive while polling.
 enum Polled {
     Request(Request),
-    Timer,
+    Task(Expired<BoxedTask>),
 }
 
 impl From<Request> for Polled {
     fn from(r: Request) -> Self {
         Polled::Request(r)
+    }
+}
+
+impl From<Expired<BoxedTask>> for Polled {
+    fn from(expired: Expired<BoxedTask>) -> Self {
+        Polled::Task(expired)
     }
 }
 
@@ -46,14 +53,12 @@ pub struct Limiter {
 struct Runner {
     // Channel receiving Requests to alter the queue.
     receiver: UnboundedReceiver<Request>,
-    // Timer to the next task.
-    timer: Option<u32>, // TODO: pick a type for this
 
-    // Tasks waiting to fire.
-    tasks: VecDeque<Box<Task>>,
+    // DelayQueue with Tasks which are waiting to run.
+    queue: DelayQueue<BoxedTask>,
 
-    // Times of the last tasks that run.
-    run_instants: VecDeque<Instant>, // TODO: use Instant here?
+    // Times of the last tasks run since Instant::now() - self.duration.
+    run_instants: VecDeque<Instant>,
 
     // Limit tasks to num_requests/duration.
     num_requests: usize,
@@ -66,9 +71,8 @@ impl Limiter {
 
         let runner = Runner {
             receiver,
-            timer: None,
-            tasks: VecDeque::default(),
-            run_instants: VecDeque::default(),
+            queue: DelayQueue::new(),
+            run_instants: VecDeque::new(),
 
             // 2 reqs/5 secs
             num_requests: 2,
@@ -109,10 +113,6 @@ where
 impl Runner {
     fn try_to_run_task(&mut self) {
         println!("TRYING TO RUN TASK");
-            if let Some(task) = self.tasks.pop_front() {
-                println!("SPAWNING TASK");
-                tokio::spawn(task);
-            }
     }
 }
 
@@ -122,51 +122,31 @@ impl Future for Runner {
 
     fn poll(&mut self) -> Result<Async<Self::Item>> {
         loop {
-            let mut polled: Option<Polled> = None;
-            {
-                // stream must be scoped so that it drops the mut ref to self.
-                // TODO: add timer logic here.
-                let mut stream = normalize(self.receiver.by_ref());
-                polled = try_ready!(stream.poll());
-            }
+            let polled = {
+                let receiver_future = normalize(self.receiver.by_ref());
+                let queue_future = normalize(self.queue.by_ref());
+                try_ready!(queue_future.select(receiver_future).poll())
+            };
+
             match polled {
                 None => {
                     // TODO: what should I really do here?
                     println!("GOT NONE");
                     break;
                 }
-                Some(Polled::Timer) => unimplemented!(),
-                Some(Polled::Request(Request::Quit)) => break,
+                Some(Polled::Task(expired)) => {
+                    tokio::spawn(expired.into_inner());
+                }
+                Some(Polled::Request(Request::Quit)) => {
+                    println!("QUITTING");
+                    break;
+                }
                 Some(Polled::Request(Request::AddTask(t))) => {
                     println!("GOT A TASK");
-                    self.tasks.push_back(t);
-                    self.try_to_run_task();
+                    self.queue.insert_at(t, Instant::now());
                 }
             }
         }
-
-        //            let q = normalize(self.queue.by_ref());
-        //            let r = normalize(self.receiver.by_ref());
-        //            let mut sel = q.select(r);
-        //
-        //            let polled = try_ready!(sel.poll());
-        //            match polled {
-        //                None => {
-        //                    println!("End of streams");
-        //                    break;
-        //                },
-        //                Some(PollResult::Request(Request::Quit)) => {
-        //                    println!("Quitting");
-        //                    break;
-        //                },
-        //                Some(PollResult::Request(Request::AddTask(t))) => {
-        //                    println!("Adding Task");
-        //                    self.queue.insert_at(t, Instant::now() + Duration::from_secs(1));
-        //                },
-        //                Some(PollResult::Task(expired)) => {
-        //                    println!("EXPIRED");
-        //                }
-        //            }
         Ok(Async::Ready(()))
     }
 }
