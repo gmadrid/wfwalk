@@ -6,12 +6,12 @@ use std::sync::Arc;
 use tokio::prelude::*;
 
 use futures::future::ok;
+use std::time::Duration;
+use std::time::Instant;
 use wfwalk::errors::*;
 use wfwalk::ratelimiter::Limiter;
 use wfwalk::stocks::Stocks;
 use wfwalk::tokio_tools::erase_types;
-use std::time::Duration;
-use std::time::Instant;
 
 mod args;
 
@@ -39,26 +39,23 @@ fn load_stock_info(config: Config) -> impl Future<Item = Stocks, Error = Error> 
 }
 
 fn make_a_task(num: u8) -> impl Future<Item = (), Error = ()> {
-    ok(Instant::now())
-        .map(move |i| println!("Task: {}/{}", num, i.elapsed().as_millis()))
+    ok(Instant::now()).map(move |i| println!("Task: {}/{}", num, i.elapsed().as_micros()))
 }
 
 fn run(params: (Config, Limiter, Stocks)) -> impl Future<Item = (), Error = Error> {
     let (config, mut limiter, stocks) = params;
 
-    limiter.add_task(make_a_task(1));
-    limiter.add_task(make_a_task(2));
-    limiter.add_task(make_a_task(3));
-    limiter.add_task(make_a_task(4));
-    limiter.add_task(make_a_task(5));
-    limiter.add_task(make_a_task(6));
-    limiter.add_task(make_a_task(7));
+    let r = limiter
+        .add_task(make_a_task(1))
+        .and_then(|_| limiter.add_task(make_a_task(2)))
+        .and_then(|_| limiter.add_task(make_a_task(3)))
+        .and_then(|_| limiter.add_task(make_a_task(4)))
+        .and_then(|_| limiter.add_task(make_a_task(5)))
+        .and_then(|_| limiter.add_task(make_a_task(6)))
+        .and_then(|_| limiter.add_task(make_a_task(7)))
+        .and_then(|_| limiter.add_task(make_a_task(8)));
 
-    loop {}
-
-    limiter.add_task(make_a_task(8));
-
-    ok(())
+    future::result(r)
 }
 
 fn cleanup(_: ()) -> impl Future<Item = (), Error = Error> {
