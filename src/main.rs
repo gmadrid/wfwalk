@@ -10,7 +10,7 @@ use tokio::prelude::*;
 
 use wfwalk::errors::*;
 use wfwalk::ratelimiter::Limiter;
-use wfwalk::stocks::Stocks;
+use wfwalk::stocks::{sanity_check, Stocks};
 use wfwalk::tokio_tools::erase_types;
 
 mod args;
@@ -38,24 +38,41 @@ fn load_stock_info(config: Config) -> impl Future<Item = Stocks, Error = Error> 
         .and_then(|tree| Stocks::load_from_tree(&tree))
 }
 
-fn make_a_task(num: u8) -> impl Future<Item = (), Error = ()> {
-    ok(Instant::now()).map(move |i| println!("Task: {}/{}", num, i.elapsed().as_micros()))
+//fn make_a_task(num: u8) -> impl Future<Item = (), Error = ()> {
+//    ok(Instant::now()).map(move |i| println!("Task: {}/{}", num, i.elapsed().as_micros()))
+//}
+
+fn maybe_sanity_check(config: &Config, stocks: &Stocks) -> Result<()> {
+    if config.do_sanity_check {
+        for (_, stock) in stocks.stocks.iter() {
+            let sanity = sanity_check(&stock);
+            if sanity.len() > 0 {
+                println!("{}", stock.symbol);
+                for warning in sanity {
+                    println!("  {}", warning);
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 fn run(params: (Config, Limiter, Stocks)) -> impl Future<Item = (), Error = Error> {
     let (config, mut limiter, stocks) = params;
 
-    let r = limiter
-        .add_task(make_a_task(1))
-        .and_then(|_| limiter.add_task(make_a_task(2)))
-        .and_then(|_| limiter.add_task(make_a_task(3)))
-        .and_then(|_| limiter.add_task(make_a_task(4)))
-        .and_then(|_| limiter.add_task(make_a_task(5)))
-        .and_then(|_| limiter.add_task(make_a_task(6)))
-        .and_then(|_| limiter.add_task(make_a_task(7)))
-        .and_then(|_| limiter.add_task(make_a_task(8)));
+    future::result(maybe_sanity_check(&config, &stocks))
 
-    future::result(r)
+//    let r = limiter
+//        .add_task(make_a_task(1))
+//        .and_then(|_| limiter.add_task(make_a_task(2)))
+//        .and_then(|_| limiter.add_task(make_a_task(3)))
+//        .and_then(|_| limiter.add_task(make_a_task(4)))
+//        .and_then(|_| limiter.add_task(make_a_task(5)))
+//        .and_then(|_| limiter.add_task(make_a_task(6)))
+//        .and_then(|_| limiter.add_task(make_a_task(7)))
+//        .and_then(|_| limiter.add_task(make_a_task(8)));
+//
+//    future::result(r)
 }
 
 fn cleanup(_: ()) -> impl Future<Item = (), Error = Error> {

@@ -1,8 +1,11 @@
-use super::Stock;
-use crate::type_tools::{BoolTools, OptionTools, VecTools};
-use itertools::Itertools;
 use std::collections::HashSet;
 use std::iter::FromIterator;
+
+use itertools::Itertools;
+
+use crate::type_tools::{BoolTools, OptionTools, VecTools};
+
+use super::Stock;
 
 lazy_static! {
     static ref BROKERAGE_TAGS: HashSet<String> =
@@ -18,7 +21,7 @@ const SANITY_TESTS: &'static [fn(&Stock) -> Option<Insanity>] = &[
     has_short_tag_if_needed,
     no_short_if_not_needed,
     has_portfolio_tag,
-    //    has_lots,
+    has_lots,
 ];
 
 type Insanity = String;
@@ -57,14 +60,15 @@ fn has_portfolio_tag(stock: &Stock) -> Option<Insanity> {
         .then(|| "has no portfolio tag".into())
 }
 
-//fn has_lots(stock: &Stock) -> Option<Insanity> {
-//    None
-//}
+fn has_lots(stock: &Stock) -> Option<Insanity> {
+    (stock.lots.len() == 0).then(|| "has no lots".into())
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::stocks::stocks::Stock;
+
+    use super::*;
 
     fn make_stock(symbol: &str, name: Option<&str>, num: f32, tags: Vec<&str>) -> Stock {
         Stock {
