@@ -1,6 +1,7 @@
+use crate::errors::*;
+
 use super::arena::ArenaIndex;
 use super::ntree::NTree;
-use crate::errors::*;
 
 pub struct BuildData {
     pub tree: NTree<String>,

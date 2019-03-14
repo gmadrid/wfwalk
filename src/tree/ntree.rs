@@ -1,8 +1,10 @@
-use super::arena::{Arena, ArenaIndex};
-use crate::errors::*;
 use std::collections::VecDeque;
 use std::fmt::Display;
 use std::fmt::Formatter;
+
+use crate::errors::*;
+
+use super::arena::{Arena, ArenaIndex};
 
 pub struct NTree<T> {
     arena: Arena<NTreeNode<T>>,
@@ -110,9 +112,9 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     use std::fmt::Write;
+
+    use super::*;
 
     #[test]
     fn test_new_tree() {

@@ -1,7 +1,9 @@
+use std::io::BufRead;
+
+use crate::errors::*;
+
 use super::build_data::BuildData;
 use super::ntree::NTree;
-use crate::errors::*;
-use std::io::BufRead;
 
 pub fn read_tree<R: BufRead>(reader: R, prefix_pattern: Option<&str>) -> Result<NTree<String>> {
     let mut build_data = BuildData::new(prefix_pattern);
@@ -18,8 +20,9 @@ pub fn read_tree<R: BufRead>(reader: R, prefix_pattern: Option<&str>) -> Result<
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::io::BufReader;
+
+    use super::*;
 
     fn bf_values_from_string(s: &'static str) -> Vec<String> {
         let tree = read_tree(BufReader::new(s.as_bytes()), None).unwrap();

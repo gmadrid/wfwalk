@@ -1,16 +1,17 @@
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::fmt::Formatter;
+use std::intrinsics::transmute;
 use std::time::Duration;
 use std::time::Instant;
 
-use tokio::prelude::{future, Async, Future, Stream};
+use itertools::{iterate, Itertools};
+use tokio::prelude::{Async, future, Future, Stream};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::timer::delay_queue::{DelayQueue, Expired};
 
 use crate::errors::*;
 use crate::tokio_tools;
-use itertools::{iterate, Itertools};
 
 type Task = dyn Future<Item = (), Error = ()> + Send;
 type BoxedTask = Box<Task>;
@@ -88,7 +89,6 @@ impl Limiter {
     where
         T: Future<Item = (), Error = ()> + Send + 'static,
     {
-        println!("adding task");
         let req = Request::AddTask(Box::new(task));
         self.sender
             .try_send(req)
@@ -144,21 +144,21 @@ impl Future for Runner {
             match polled {
                 None => {
                     // TODO: what should I really do here?
-                    println!("GOT NONE");
+                    trace!("Limiter is done. Quitting.");
                     break;
                 }
                 Some(Polled::Task(expired)) => {
                     tokio::spawn(expired.into_inner());
                 }
                 Some(Polled::Request(Request::Quit)) => {
-                    println!("QUITTING");
+                    trace!("Limiter received shutdown. Clearing waiting tasks and quitting.");
                     break;
                 }
                 Some(Polled::Request(Request::AddTask(t))) => {
-                    println!("GOT A TASK");
                     let new_instant = self.compute_next_task_time();
                     self.run_instants.push_back(new_instant);
                     self.queue.insert_at(t, new_instant);
+                    trace!("New task scheduled at: {}", new_instant.elapsed().as_millis());
                 }
             }
         }

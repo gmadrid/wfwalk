@@ -2,12 +2,12 @@
 extern crate clap;
 
 use std::sync::Arc;
-
-use tokio::prelude::*;
-
-use futures::future::ok;
 use std::time::Duration;
 use std::time::Instant;
+
+use futures::future::ok;
+use tokio::prelude::*;
+
 use wfwalk::errors::*;
 use wfwalk::ratelimiter::Limiter;
 use wfwalk::stocks::Stocks;
@@ -30,7 +30,7 @@ fn setup(config: Config) -> impl Future<Item = (Config, Limiter, Stocks), Error 
 }
 
 fn start_rate_limiter() -> impl Future<Item = Limiter, Error = Error> {
-    future::ok(Limiter::new(5, Duration::from_secs(60)))
+    future::ok(Limiter::new(3, Duration::from_secs(2)))
 }
 
 fn load_stock_info(config: Config) -> impl Future<Item = Stocks, Error = Error> {
