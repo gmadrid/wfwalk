@@ -58,13 +58,10 @@ fn load_stock_info(config: Config) -> impl Future<Item = Stocks, Error = Error> 
 //}
 
 fn run_my_test_code<S>(config: &Config, stocks: S) -> impl Future<Item = (), Error = Error>
-where S: AsRef<Stocks>
+where
+    S: AsRef<Stocks>,
 {
-    //let uri = wfwalk::alphavantage::request::intraday("GOOG", &config.token);
-    //let thing = wfwalk::alphavantage::query(uri);
-
     wfwalk::alphavantage::intraday("GOOG".to_string(), config.token.clone())
-    //thing.map(|i| println!("{:?}", i)).map_err(|e| e.into())
 }
 
 fn run(params: (Config, Limiter, Stocks)) -> impl Future<Item = (), Error = Error> {
@@ -73,19 +70,19 @@ fn run(params: (Config, Limiter, Stocks)) -> impl Future<Item = (), Error = Erro
     let stocks_arc = Arc::new(stocks);
 
     //future::result(maybe_sanity_check(&config, stocks_arc))
-        ok(()).and_then(move |_| run_my_test_code(&config, stocks_arc.clone()))
+    ok(()).and_then(move |_| run_my_test_code(&config, stocks_arc.clone()))
 
-//    let r = limiter
-//        .add_task(make_a_task(1))
-//        .and_then(|_| limiter.add_task(make_a_task(2)))
-//        .and_then(|_| limiter.add_task(make_a_task(3)))
-//        .and_then(|_| limiter.add_task(make_a_task(4)))
-//        .and_then(|_| limiter.add_task(make_a_task(5)))
-//        .and_then(|_| limiter.add_task(make_a_task(6)))
-//        .and_then(|_| limiter.add_task(make_a_task(7)))
-//        .and_then(|_| limiter.add_task(make_a_task(8)));
-//
-//    future::result(r)
+    //    let r = limiter
+    //        .add_task(make_a_task(1))
+    //        .and_then(|_| limiter.add_task(make_a_task(2)))
+    //        .and_then(|_| limiter.add_task(make_a_task(3)))
+    //        .and_then(|_| limiter.add_task(make_a_task(4)))
+    //        .and_then(|_| limiter.add_task(make_a_task(5)))
+    //        .and_then(|_| limiter.add_task(make_a_task(6)))
+    //        .and_then(|_| limiter.add_task(make_a_task(7)))
+    //        .and_then(|_| limiter.add_task(make_a_task(8)));
+    //
+    //    future::result(r)
 }
 
 fn cleanup(_: ()) -> impl Future<Item = (), Error = Error> {

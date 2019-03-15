@@ -1,9 +1,12 @@
 use hyper::client::HttpConnector;
 use hyper::{Client, Uri};
 use hyper_tls::HttpsConnector;
+use tokio::prelude::Future;
 use url::Url;
 
 pub use specs::intraday;
+
+use crate::errors::*;
 
 mod specs;
 
@@ -36,13 +39,16 @@ impl Alphavantage {
         url
     }
 
-    fn query<S>(&self, spec: S)
+    fn query<S>(&self, spec: S) -> impl Future<Item = (), Error = Error>
     where
         S: QuerySpec,
     {
         let uri = spec.url(&self);
         let response = self.client.get(uri);
-        println!("{:?}", response);
+        response
+            .inspect(|r| println!("{:?}", r))
+            .map(|_| ())
+            .map_err(|e| e.into())
     }
 }
 

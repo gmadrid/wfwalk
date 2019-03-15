@@ -6,7 +6,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 use itertools::{iterate, Itertools};
-use tokio::prelude::{Async, future, Future, Stream};
+use tokio::prelude::{future, Async, Future, Stream};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::timer::delay_queue::{DelayQueue, Expired};
 
@@ -158,7 +158,10 @@ impl Future for Runner {
                     let new_instant = self.compute_next_task_time();
                     self.run_instants.push_back(new_instant);
                     self.queue.insert_at(t, new_instant);
-                    trace!("New task scheduled at: {}", new_instant.elapsed().as_millis());
+                    trace!(
+                        "New task scheduled at: {}",
+                        new_instant.elapsed().as_millis()
+                    );
                 }
             }
         }

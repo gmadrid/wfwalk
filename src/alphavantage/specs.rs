@@ -1,6 +1,8 @@
 use hyper::Uri;
 
 use super::Alphavantage;
+use crate::errors::*;
+use tokio::prelude::Future;
 
 // Intraday
 
@@ -8,9 +10,9 @@ struct IntraDay {
     symbol: String,
 }
 
-pub fn intraday(symbol: String, apikey: String) {
+pub fn intraday(symbol: String, apikey: String) -> impl Future<Item = (), Error = Error> {
     let client = Alphavantage::new(&apikey);
-    let response = client.query(IntraDay { symbol });
+    client.query(IntraDay { symbol })
 }
 
 impl super::QuerySpec for IntraDay {
