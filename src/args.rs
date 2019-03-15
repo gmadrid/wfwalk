@@ -17,6 +17,7 @@ const TOKEN_ENV: &str = "WFWALK_TOKEN";
 pub struct Config {
     pub do_sanity_check: bool,
     pub filepath: PathBuf,
+    pub token: String,
 }
 
 impl Config {
@@ -30,6 +31,7 @@ impl<'a> From<Args<'a>> for Config {
         Config {
             do_sanity_check: args.do_sanity_check(),
             filepath: args.file(),
+            token: args.token().to_string(),
         }
     }
 }

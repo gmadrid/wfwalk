@@ -28,15 +28,16 @@ pub mod errors {
 
             foreign_links{
                 Clap(clap::Error);
+                Hyper(hyper::error::Error);
                 Io(::std::io::Error);
                 ParseFloat(::std::num::ParseFloatError);
                 RecvError(tokio::sync::mpsc::error::UnboundedRecvError);
                 TokioTimer(tokio::timer::Error);
-    //            <tokio_timer::error::Error
             }
         }
 }
 
+pub mod alphavantage;
 pub mod ratelimiter;
 pub mod stocks;
 pub mod tokio_tools;
