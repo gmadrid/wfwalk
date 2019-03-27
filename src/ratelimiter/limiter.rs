@@ -1,12 +1,10 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::fmt::Formatter;
-use std::intrinsics::transmute;
 use std::time::Duration;
 use std::time::Instant;
 
-use itertools::{iterate, Itertools};
-use tokio::prelude::{future, Async, Future, Stream};
+use tokio::prelude::{Async, Future, Stream};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::timer::delay_queue::{DelayQueue, Expired};
 

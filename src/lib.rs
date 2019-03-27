@@ -32,6 +32,7 @@ pub mod errors {
             Io(::std::io::Error);
             ParseFloat(::std::num::ParseFloatError);
             RecvError(tokio::sync::mpsc::error::UnboundedRecvError);
+            SerdeJson(serde_json::error::Error);
             TokioTimer(tokio::timer::Error);
         }
     }

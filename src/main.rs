@@ -3,7 +3,6 @@ extern crate clap;
 
 use std::sync::Arc;
 use std::time::Duration;
-use std::time::Instant;
 
 use futures::future::ok;
 use tokio::prelude::*;
@@ -62,6 +61,8 @@ where
     S: AsRef<Stocks>,
 {
     wfwalk::alphavantage::intraday("GOOG".to_string(), config.token.clone())
+        .inspect(|v| println!("IN RUNNER: {:?}", v))
+        .map(|_| ())
 }
 
 fn run(params: (Config, Limiter, Stocks)) -> impl Future<Item = (), Error = Error> {

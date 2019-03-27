@@ -1,6 +1,8 @@
 use hyper::client::HttpConnector;
 use hyper::{Client, Uri};
 use hyper_tls::HttpsConnector;
+use serde::de::DeserializeOwned;
+use tokio::prelude::stream::Stream;
 use tokio::prelude::Future;
 use url::Url;
 
@@ -39,16 +41,16 @@ impl Alphavantage {
         url
     }
 
-    fn query<S>(&self, spec: S) -> impl Future<Item = (), Error = Error>
+    fn query<S>(&self, spec: S) -> impl Future<Item = S::QueryResult, Error = Error>
     where
         S: QuerySpec,
     {
         let uri = spec.url(&self);
-        let response = self.client.get(uri);
-        response
-            .inspect(|r| println!("{:?}", r))
-            .map(|_| ())
-            .map_err(|e| e.into())
+        self.client
+            .get(uri)
+            .map_err(Error::from)
+            .and_then(|r| r.into_body().concat2().map_err(Error::from))
+            .and_then(|chunk| serde_json::from_slice::<S::QueryResult>(&chunk).map_err(Error::from))
     }
 }
 
@@ -62,5 +64,7 @@ fn convert_url(url: &Url) -> Uri {
 }
 
 trait QuerySpec {
+    type QueryResult: DeserializeOwned;
+
     fn url(&self, a: &Alphavantage) -> Uri;
 }
