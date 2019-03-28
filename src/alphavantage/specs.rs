@@ -58,6 +58,14 @@ pub struct IntraDayResponse {
     series: HashMap<String, Quote>,
 }
 
+impl IntraDayResponse {
+    fn last_price(&self) -> Option<f32> {
+        let last_date = self.series.keys().max().map(|s| s.clone());
+        let quote = last_date.map(|d| &self.series[&d]);
+        quote.map(|q| q.close)
+    }
+}
+
 pub fn intraday(
     symbol: String,
     apikey: String,
@@ -114,5 +122,8 @@ mod tests {
     fn test_deserialize() {
         let foo = serde_json::from_str::<IntraDayResponse>(SHORT_RESPONSE);
         assert!(foo.is_ok());
+
+        let last_price = foo.unwrap().last_price().unwrap();
+        assert_eq!(1172.9800, last_price);
     }
 }
