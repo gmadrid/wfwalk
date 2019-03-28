@@ -4,7 +4,7 @@ extern crate clap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use futures::future::{err, ok};
+use futures::future::{ok, err};
 use tokio::prelude::*;
 
 use wfwalk::errors::*;
@@ -42,20 +42,20 @@ fn load_stock_info(config: Config) -> impl Future<Item = Stocks, Error = Error> 
 //}
 
 fn maybe_sanity_check(config: &Config, stocks: &Stocks) -> bool {
-    if config.do_sanity_check {
-        for (_, stock) in stocks.stocks.iter() {
-            let sanity = sanity_check(&stock);
-            if sanity.len() > 0 {
-                println!("{}", stock.symbol);
-                for warning in sanity {
-                    println!("  {}", warning);
-                }
+    if !config.do_sanity_check {
+        return false;
+    }
+
+    for (_, stock) in stocks.stocks.iter() {
+        let sanity = sanity_check(&stock);
+        if sanity.len() > 0 {
+            println!("{}", stock.symbol);
+            for warning in sanity {
+                println!("  {}", warning);
             }
         }
-        true
-    } else {
-        false
     }
+    true
 }
 
 //fn run_my_test_code<S>(config: &Config, stocks: S) -> impl Future<Item = (), Error = Error>
@@ -73,9 +73,20 @@ fn run(params: (Config, Limiter, Stocks)) -> impl Future<Item = (), Error = Erro
     if maybe_sanity_check(&config, &stocks) {
         ok(())
     } else {
+        let mut err = None;
         for stock in stocks.stocks.values() {
             let symbol = stock.symbol.clone();
-            limiter.add_task(futures::lazy(move || Ok(println!("{}", symbol))));
+            if let Err(e) = limiter.add_task(futures::lazy(move || {
+                Ok(println!("{}", symbol))
+            })) {
+                err = Some(e);
+                break;
+            }
+        }
+
+        if let Some(e) = err {
+            limiter.quit();
+            return future::err(e);
         }
 
         ok(())
