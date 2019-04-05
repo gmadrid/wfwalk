@@ -125,6 +125,7 @@ pub fn parse_stock(str: &str) -> Result<super::Stock> {
         num,
         tags,
         lots: vec![],
+        last_price: None,
     })
 }
 

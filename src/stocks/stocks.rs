@@ -23,6 +23,7 @@ pub struct Stock {
     pub num: f32,
     pub tags: HashSet<String>,
     pub lots: Vec<Lot>,
+    pub last_price: Option<f32>,
 }
 
 #[derive(Debug, PartialEq)]

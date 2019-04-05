@@ -6,6 +6,7 @@ use tokio::prelude::stream::Stream;
 use tokio::prelude::Future;
 use url::Url;
 
+pub use specs::daily;
 pub use specs::intraday;
 
 use crate::errors::*;
@@ -20,7 +21,7 @@ pub struct Alphavantage {
 }
 
 impl Alphavantage {
-    fn new(apikey: &str) -> Alphavantage {
+    pub fn new(apikey: &str) -> Alphavantage {
         let https = HttpsConnector::new(4).expect("TLS initialization failed");
         let client = Client::builder().build::<_, hyper::Body>(https);
 

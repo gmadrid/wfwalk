@@ -24,6 +24,11 @@ pub mod errors {
                 description("a parse error"),
                 display("Parse error: {:1} {:0}", desc, nonterminal),
             }
+
+            WeirdError(msg: &'static str) {
+                description("a weird error"),
+                display("A weird error: {}", msg),
+            }
         }
 
         foreign_links{
@@ -39,6 +44,7 @@ pub mod errors {
 }
 
 pub mod alphavantage;
+pub mod display;
 pub mod ratelimiter;
 pub mod stocks;
 pub mod tokio_tools;

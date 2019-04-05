@@ -1,12 +1,15 @@
 #[macro_use]
 extern crate clap;
 
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-use futures::future::{ok, err};
+use futures::future::{err, ok};
 use tokio::prelude::*;
 
+use args::Config;
+use std::path::PathBuf;
+use wfwalk::display::Displayer;
 use wfwalk::errors::*;
 use wfwalk::ratelimiter::Limiter;
 use wfwalk::stocks::{sanity_check, Stocks};
@@ -14,33 +17,41 @@ use wfwalk::tokio_tools::erase_types;
 
 mod args;
 
-type Config = Arc<args::Config>;
-
 fn future_main(args: Config) -> impl Future<Item = (), Error = Error> {
-    setup(args.clone()).and_then(run).and_then(cleanup)
+    setup(args).and_then(run).and_then(cleanup)
 }
 
-fn setup(config: Config) -> impl Future<Item = (Config, Limiter, Stocks), Error = Error> {
+fn setup(
+    config: Config,
+) -> impl Future<Item = (Config, Displayer, Limiter, Arc<RwLock<Stocks>>), Error = Error> {
     let limiter = start_rate_limiter();
-    let stocks = load_stock_info(config.clone());
+    let stocks = load_stock_info(config.filepath.clone());
+    let display = stocks.and_then(|s| start_display(s));
+
     limiter
-        .join(stocks)
-        .map(|(limiter, stocks)| (config, limiter, stocks))
+        .join(display)
+        .map(|(limiter, (displayer, stocks))| (config, displayer, limiter, stocks))
 }
 
 fn start_rate_limiter() -> impl Future<Item = Limiter, Error = Error> {
-    future::ok(Limiter::new(5, Duration::from_secs(60)))
+    future::ok(Limiter::new(5, Duration::from_secs(62)))
 }
 
-fn load_stock_info(config: Config) -> impl Future<Item = Stocks, Error = Error> {
-    wfwalk::tree::read_tree_async(config.filepath.clone())
-        .and_then(|tree| Stocks::load_from_tree(&tree))
+fn start_display(
+    stocks: Stocks,
+) -> impl Future<Item = (Displayer, Arc<RwLock<Stocks>>), Error = Error> {
+    let stocks_arc = Arc::new(RwLock::new(stocks));
+    future::ok((Displayer::new(stocks_arc.clone()), stocks_arc))
 }
 
-//fn make_a_task(num: u8) -> impl Future<Item = (), Error = ()> {
-//    ok(Instant::now()).map(move |i| println!("Task: {}/{}", num, i.elapsed().as_micros()))
-//}
+fn load_stock_info(filepath: PathBuf) -> impl Future<Item = Stocks, Error = Error> {
+    wfwalk::tree::read_tree_async(filepath).and_then(|tree| Stocks::load_from_tree(&tree))
+}
 
+////fn make_a_task(num: u8) -> impl Future<Item = (), Error = ()> {
+////    ok(Instant::now()).map(move |i| println!("Task: {}/{}", num, i.elapsed().as_micros()))
+////}
+//
 fn maybe_sanity_check(config: &Config, stocks: &Stocks) -> bool {
     if !config.do_sanity_check {
         return false;
@@ -58,26 +69,50 @@ fn maybe_sanity_check(config: &Config, stocks: &Stocks) -> bool {
     true
 }
 
-//fn run_my_test_code<S>(config: &Config, stocks: S) -> impl Future<Item = (), Error = Error>
-//where
-//    S: AsRef<Stocks>,
-//{
-//    wfwalk::alphavantage::intraday("GOOG".to_string(), config.token.clone())
-//        .inspect(|v| println!("IN RUNNER: {:?}", v))
-//        .map(|_| ())
-//}
+fn query_task(
+    symbol: String,
+    token: String,
+    stocks: Arc<RwLock<Stocks>>,
+    displayer: Arc<RwLock<Displayer>>,
+) -> impl Future<Item = (), Error = ()> {
+    println!("QUERY TASK: {}", symbol);
+    wfwalk::alphavantage::daily(symbol.clone(), token)
+        .map(move |daily_result| {
+            // unwrap: TODO: really bad.
+            let mut stocks = stocks.write().unwrap();
+            daily_result.last_price().map(move |lp| {
+                stocks.stocks.entry(symbol).and_modify(|s| {
+                    s.last_price.replace(lp);
+                });
+            });
+            //            let mut stock = stocks.stocks[symbol];
+            //            stock.last_price = daily_result.last_price();
+            // unwrap: TODO: really bad.
+            displayer.write().unwrap().refresh();
+        })
+        //        .inspect(move |_| println!("IN RUNNER: {}", symbol))
+        .map_err(|_| ())
+}
 
-fn run(params: (Config, Limiter, Stocks)) -> impl Future<Item = (), Error = Error> {
-    let (config, mut limiter, stocks) = params;
+fn run(
+    params: (Config, Displayer, Limiter, Arc<RwLock<Stocks>>),
+) -> impl Future<Item = (), Error = Error> {
+    let (config, displayer, mut limiter, stocks) = params;
 
-    if maybe_sanity_check(&config, &stocks) {
+    // unwrap: TODO No good.
+    if maybe_sanity_check(&config, &stocks.read().unwrap()) {
         ok(())
     } else {
         let mut err = None;
-        for stock in stocks.stocks.values() {
+        let stocks_clone = stocks.clone();
+        let displayer_arc = Arc::new(RwLock::new(displayer));
+        for stock in stocks.read().unwrap().stocks.values() {
+            let token = config.token.clone();
             let symbol = stock.symbol.clone();
-            if let Err(e) = limiter.add_task(futures::lazy(move || {
-                Ok(println!("{}", symbol))
+            let stocks_for_task = stocks_clone.clone();
+            let displayer_for_task = displayer_arc.clone();
+            if let Err(e) = limiter.add_task(future::lazy(move || {
+                query_task(symbol, token.clone(), stocks_for_task, displayer_for_task)
             })) {
                 err = Some(e);
                 break;
@@ -91,20 +126,6 @@ fn run(params: (Config, Limiter, Stocks)) -> impl Future<Item = (), Error = Erro
 
         ok(())
     }
-
-    //ok(()).and_then(move |_| run_my_test_code(&config, stocks_arc.clone()))
-
-    //    let r = limiter
-    //        .add_task(make_a_task(1))
-    //        .and_then(|_| limiter.add_task(make_a_task(2)))
-    //        .and_then(|_| limiter.add_task(make_a_task(3)))
-    //        .and_then(|_| limiter.add_task(make_a_task(4)))
-    //        .and_then(|_| limiter.add_task(make_a_task(5)))
-    //        .and_then(|_| limiter.add_task(make_a_task(6)))
-    //        .and_then(|_| limiter.add_task(make_a_task(7)))
-    //        .and_then(|_| limiter.add_task(make_a_task(8)));
-    //
-    //    future::result(r)
 }
 
 fn cleanup(_: ()) -> impl Future<Item = (), Error = Error> {
@@ -112,8 +133,7 @@ fn cleanup(_: ()) -> impl Future<Item = (), Error = Error> {
 }
 
 fn real_main() -> Result<()> {
-    let config = Arc::new(args::Config::new()?);
-
+    let config = args::Config::new()?;
     tokio::run(futures::lazy(move || erase_types(future_main(config))));
 
     Ok(())

@@ -87,6 +87,47 @@ impl super::QuerySpec for IntraDay {
     }
 }
 
+// Daily
+
+struct Daily {
+    symbol: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DailyResponse {
+    #[serde(rename = "Meta Data")]
+    metadata: Metadata,
+    #[serde(rename = "Time Series (Daily)")]
+    series: HashMap<String, Quote>,
+}
+
+impl DailyResponse {
+    pub fn last_price(&self) -> Option<f32> {
+        self.series
+            .keys()
+            .max()
+            .map(|d| &self.series[d])
+            .map(|q| q.close)
+    }
+}
+
+pub fn daily(symbol: String, apikey: String) -> impl Future<Item = DailyResponse, Error = Error> {
+    let client = Alphavantage::new(&apikey);
+    client.query(Daily { symbol })
+}
+
+impl super::QuerySpec for Daily {
+    type QueryResult = DailyResponse;
+
+    fn url(&self, a: &Alphavantage) -> Uri {
+        let mut url = a.base("TIME_SERIES_DAILY");
+        url.query_pairs_mut()
+            .append_pair("symbol", &self.symbol)
+            .append_pair("outputsize", "compact");
+        super::convert_url(&url)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
