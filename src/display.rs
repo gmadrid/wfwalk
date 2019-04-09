@@ -42,6 +42,9 @@ struct DisplayerRunner {
 
 impl DisplayerRunner {
     fn spew(&self) {
+        // Clear the screen.
+        println!("\x1b[2J\x1b[1;1H");
+
         // unwrap: TODO deal with error here.
         let stocks = self.stocks.read().unwrap();
         for stock in stocks
